@@ -15,9 +15,17 @@ export default function BangRedirect({ searchParams }: HomeProps) {
     // Render fallback UI if no search query is provided.
     const noSearchDefaultPageRender = () => {
         return (
-            <div className="flex min-h-screen flex-col justify-center items-center">
+            <div className="flex min-h-screen flex-col justify-center items-center text-center">
                 <h1 className="text-4xl">Not searching for anything?</h1>
-                <p className="text-xl p-2">Try <span className="italic semibold">"!gpt what is the meaning of life?"</span></p>
+                <p className="text-xl p-2">Try{" "}
+                    <a
+                        href="https://whataduckk.netlify.app/bang?q=!gpt%20what%20is%20the%20meaning%20of%20life?"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="italic underline text-gray-400 hover:text-gray-200"
+                    >
+                        "!gpt what is the meaning of life?"
+                    </a></p>
             </div>
         );
     };
