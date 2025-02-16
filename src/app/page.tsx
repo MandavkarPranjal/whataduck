@@ -20,7 +20,7 @@ export default function Home() {
         <div className="flex min-h-screen flex-col justify-between p-8 font-[var(--font-geist-sans)] sm:p-20">
             <main className="flex flex-grow flex-col items-center justify-center text-center">
                 <h1 className="text-5xl sm:text-7xl font-bold mb-8">What a Duck!</h1>
-                <div className="flex flex-col sm:flex-row items-center gap-4 w-full max-w-2xl">
+                <div className="flex flex-row items-center gap-4 w-full max-w-2xl">
                     <input
                         type="text"
                         className="p-2 rounded w-full bg-transparent/5 border border-gray-700/70 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
