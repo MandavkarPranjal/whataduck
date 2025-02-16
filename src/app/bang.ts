@@ -39,12 +39,21 @@ export const bangs = [
   },
   {
     c: "AI",
-    d: "https://chat.mistral.ai",
+    d: "chat.mistral.ai",
     r: 0,
     s: "Mistral",
     sc: "AI",
     t: "mis",
     u: "https://chat.mistral.ai/chat?q={{{s}}}",
+  },
+  {
+    c: "AI",
+    d: "huggingface.co/chat",
+    r: 0,
+    s: "Huggingface chat",
+    sc: "AI",
+    t: "hug",
+    u: "https://huggingface.co/chat?q={{{s}}}",
   },
   {
     c: "Tech",
