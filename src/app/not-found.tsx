@@ -21,14 +21,23 @@ export default function NotFoundPage() {
                     </a>
                 </div>
             </main>
-            <footer className="mt-8 text-center text-sm text-gray-500">
+            <footer className="flext flex-row mt-8 text-center text-gray-400">
                 <a
-                    href="https://github.com/MandavkarPranjal/quicklink"
+                    href="https://github.com/MandavkarPranjal/whataduck"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="hover:underline"
+                    className="hover:text-gray-200"
                 >
-                    View on GitHub
+                    GitHub
+                </a>
+                {" "} {" | "} {" "}
+                <a
+                    href="https://x.com/__pr4njal"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-gray-200"
+                >
+                    Twitter (X)
                 </a>
             </footer>
         </div>
