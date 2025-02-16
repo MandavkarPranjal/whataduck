@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     title: "What a Duck!",
     description: "Better Search Engine, which is not a search engine",
     icons: {
-        icon: "/favicon.ico",
+        icon: "/favicon.svg",
     }
 };
 
