@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 export default function Home() {
     return (
         <div className="flex min-h-screen flex-col justify-between p-8 font-[family-name:var(--font-geist-sans)] sm:p-20">
