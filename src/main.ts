@@ -12,7 +12,7 @@ function noSearchDefaultPageRender() {
           <input
             type="text"
             class="url-input"
-            value="https://whataduckk.netlify.app?q=%s"
+            value="https://whataduck.vercel.app?q=%s"
             readonly
           />
           <button class="copy-button">
