@@ -19,7 +19,10 @@ export default function Home() {
     return (
         <div className="flex min-h-screen flex-col justify-between p-8 font-[var(--font-geist-sans)] sm:p-20">
             <main className="flex flex-grow flex-col items-center justify-center text-center">
-                <h1 className="text-5xl sm:text-7xl font-bold mb-8">What a Duck!</h1>
+                <h1 className="text-5xl sm:text-7xl font-bold mb-2">What a Duck!</h1>
+                <p className="text-gray-400 text-center max-w-xl mb-8">
+                    DuckDuckGo's bang redirects are too slow & no redirects to any AI-chat app. Add the following URL as a custom search engine to your browser.
+                </p>
                 <div className="flex flex-row items-center gap-4 w-full max-w-2xl">
                     <input
                         type="text"
