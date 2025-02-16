@@ -1,5 +1,3 @@
-"use client";
-
 export default function NotFoundPage() {
     return (
         <div className="flex min-h-screen flex-col justify-between p-8 font-[family-name:var(--font-geist-sans)] sm:p-20">
@@ -7,7 +5,6 @@ export default function NotFoundPage() {
                 <h1 className="text-3xl">
                     {"You're lost in the woods!"}
                 </h1>
-                {/* Add single horizontal line to the above heading */}
                 <div className="mt-4 h-px w-96 bg-gray-700/70 rounded-full"></div>
                 <div className="mt-4 text-xl text-gray-300">
                     Try{" "}
@@ -16,17 +13,19 @@ export default function NotFoundPage() {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="italic underline text-gray-400 hover:text-gray-200"
+                        aria-label="Get a motivational quote"
                     >
                         "!gpt Quote to motivate me"
                     </a>
                 </div>
             </main>
-            <footer className="flext flex-row mt-8 text-center text-gray-400">
+            <footer className="flex-row mt-8 text-center text-gray-400">
                 <a
                     href="https://github.com/MandavkarPranjal/whataduck"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="hover:text-gray-200"
+                    aria-label="View source code on GitHub"
                 >
                     GitHub
                 </a>
@@ -36,6 +35,7 @@ export default function NotFoundPage() {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="hover:text-gray-200"
+                    aria-label="Follow me on Twitter"
                 >
                     Twitter (X)
                 </a>
