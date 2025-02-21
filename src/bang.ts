@@ -56,6 +56,15 @@ export const bangs = [
     u: "https://huggingface.co/chat?q={{{s}}}",
   },
   {
+    c: "Entertainment",
+    d: "hianime.to",
+    r: 0,
+    s: "Hi Anime",
+    sc: "Video",
+    t: "hia",
+    u: "https://hianime.to/search?keyword={{{s}}}",
+  },
+  {
     c: "Tech",
     d: "www.01net.com",
     r: 4,
