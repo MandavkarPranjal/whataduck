@@ -7,7 +7,7 @@ function noSearchDefaultPageRender() {
     <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;">
       <div class="content-container">
         <h1>What a Duck!</h1>
-        <p> DuckDuckGo's bang redirects can be slow, and no support AI chat bots. To get the best experience, add the following URL as a custom search engine in your browser. This will enable <a href="/search" target="_blank">all of these bangs</a>. </p>
+        <p>DuckDuckGo's bang redirects can be slow and don't support AI chat bots. For the best experience, add the following URL as a custom search engine in your browser to enable <a href="/search" target="_blank">all of these bangs</a>.</p>
         <div class="url-container">
           <input
             type="text"
