@@ -1,5 +1,15 @@
 // This file was (mostly) ripped from https://duckduckgo.com/bang.js
 
+export interface Bang {
+  c: string;
+  d: string;
+  r: number;
+  s: string;
+  sc: string;
+  t: string;
+  u: string;
+}
+
 export const bangs = [
   {
     c: "AI",
@@ -16,7 +26,7 @@ export const bangs = [
     r: 0,
     s: "ChatGPT",
     sc: "AI",
-    t: "gpt",
+    t: "cgpt",
     u: "https://chatgpt.com/?q={{{s}}}",
   },
   {
