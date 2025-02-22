@@ -43,9 +43,14 @@ function computeExactBonus(query: string, text: string): number {
  * @param query - The search query input by the user.
  * @returns An array of bang entries sorted by relevance.
  */
-function searchBangs(query: string) {
-    const identifierWeight = 2;
+const searchCache = new Map();
 
+function searchBangs(query: string) {
+    // Check cache first
+    const cached = searchCache.get(query);
+    if (cached) return cached;
+
+    const identifierWeight = 2;
     const results = bangs.map((bang) => {
         const scoreT = computeNormalScore(query, bang.t);
         const scoreS = computeNormalScore(query, bang.s);
@@ -55,10 +60,14 @@ function searchBangs(query: string) {
         return { bang, score: totalScore };
     });
 
-    return results
+    const filteredResults = results
         .filter(item => item.score > 0)
         .sort((a, b) => b.score - a.score)
         .map(item => item.bang);
+    
+    // Cache results
+    searchCache.set(query, filteredResults);
+    return filteredResults;
 }
 
 /**
