@@ -1,4 +1,5 @@
 import { bangs } from "./bang";
+import "./global.css";
 
 /**
  * Computes a normal match score for the given query against the provided text,
@@ -67,12 +68,23 @@ function searchBangs(query: string) {
  * based on a less case-sensitive (normal) search.
  */
 function createHardSearchPage(): void {
-    // Create container element.
-    // Set the innerHTML of the document body.
+    // Set the innerHTML of the document body with a fixed header containing the search input,
+    // a scrollable results container, and a footer with enhanced visibility.
+    // The header now displays the total number of bangs with additional text.
     document.body.innerHTML = `
-    <div id="search-container" style="max-width:600px;margin:50px auto;font-family:sans-serif;">
-      <input id="search-input" type="text" placeholder="Search bangs" style="width:100%;padding:10px;font-size:16px;box-sizing:border-box;margin-bottom:20px;" />
-      <div id="results-container"></div>
+    <div style="display: flex; flex-direction: column; min-height: 100vh; margin: 0; font-family: sans-serif; align-items: center; justify-content: space-between;">
+      <div style="text-align: center; width: 100%; max-width: 600px; padding: 20px 0; display: flex; flex-direction: column; justify-content: center; flex-grow: 1;">
+        <h2 style="margin-bottom: 20px;">${bangs.length} bangs and counting</h2>
+        <input id="search-input" type="text" placeholder="Search bangs"
+          style="width:100%; padding:10px; font-size:16px; box-sizing:border-box; margin-bottom:20px;" />
+        <div id="results-container" style="width: 100%; flex: 1; overflow-y: auto; padding: 0 20px; box-sizing: border-box;">
+        </div>
+      </div>
+      <footer class="footer">
+        <a href="https://x.com/__pr4njal" target="_blank">pranjal</a>
+        •
+        <a href="https://github.com/MandavkarPranjal/whataduck" target="_blank">github</a>
+      </footer>
     </div>
   `;
 
@@ -89,9 +101,11 @@ function createHardSearchPage(): void {
             resultsContainer.innerHTML = "No results found.";
             return;
         }
-        let listHtml = '<ul style="list-style:none;padding:0;">';
+        // Removed text-align from the ul to allow li items to span full width.
+        let listHtml = '<ul style="list-style:none;padding:0;margin:0;width:100%;">';
         results.forEach(bang => {
-            listHtml += `<li style="padding:8px;border-bottom:1px solid #eee;"><strong>${bang.s}</strong> - <em>!${bang.t}</em></li>`;
+            listHtml += `<li style="padding:8px;border-bottom:1px solid #eee; text-align: center">` +
+                `<strong>${bang.s}</strong> - <em>!${bang.t}</em></li>`;
         });
         listHtml += "</ul>";
         resultsContainer.innerHTML = listHtml;
