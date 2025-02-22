@@ -68,25 +68,16 @@ function searchBangs(query: string) {
  */
 function createHardSearchPage(): void {
     // Create container element.
-    const container = document.createElement("div");
-    container.style.maxWidth = "600px";
-    container.style.margin = "50px auto";
-    container.style.fontFamily = "sans-serif";
+    // Set the innerHTML of the document body.
+    document.body.innerHTML = `
+    <div id="search-container" style="max-width:600px;margin:50px auto;font-family:sans-serif;">
+      <input id="search-input" type="text" placeholder="Search bangs" style="width:100%;padding:10px;font-size:16px;box-sizing:border-box;margin-bottom:20px;" />
+      <div id="results-container"></div>
+    </div>
+  `;
 
-    // Create search input element.
-    const input = document.createElement("input");
-    input.type = "text";
-    input.placeholder = "Search bangs ";
-    input.style.width = "100%";
-    input.style.padding = "10px";
-    input.style.fontSize = "16px";
-    input.style.boxSizing = "border-box";
-    input.style.marginBottom = "20px";
-    container.appendChild(input);
-
-    // Create results container.
-    const resultsContainer = document.createElement("div");
-    container.appendChild(resultsContainer);
+    const input = document.getElementById("search-input") as HTMLInputElement;
+    const resultsContainer = document.getElementById("results-container") as HTMLDivElement;
 
     /**
      * Renders the provided array of bang entries.
@@ -94,23 +85,16 @@ function createHardSearchPage(): void {
      * @param results - An array of bang entries to display.
      */
     function displayResults(results: typeof bangs): void {
-        resultsContainer.innerHTML = "";
         if (results.length === 0) {
-            resultsContainer.textContent = "No results found.";
+            resultsContainer.innerHTML = "No results found.";
             return;
         }
-        const list = document.createElement("ul");
-        list.style.listStyle = "none";
-        list.style.padding = "0";
+        let listHtml = '<ul style="list-style:none;padding:0;">';
         results.forEach(bang => {
-            const listItem = document.createElement("li");
-            listItem.style.padding = "8px";
-            listItem.style.borderBottom = "1px solid #eee";
-            // Display bang's name ("s") and identifier ("t") without a score.
-            listItem.innerHTML = `<strong>${bang.s}</strong> - <em>!${bang.t}</em>`;
-            list.appendChild(listItem);
+            listHtml += `<li style="padding:8px;border-bottom:1px solid #eee;"><strong>${bang.s}</strong> - <em>!${bang.t}</em></li>`;
         });
-        resultsContainer.appendChild(list);
+        listHtml += "</ul>";
+        resultsContainer.innerHTML = listHtml;
     }
 
     /**
@@ -131,8 +115,8 @@ function createHardSearchPage(): void {
         }
     });
 
-    // Append the container to the document body.
-    document.body.appendChild(container);
+    // Initially show the full list.
+    displayFullList();
 }
 
 // Initialize the search page after the DOM loads.
