@@ -76,6 +76,15 @@ export const bangs = [
   },
   {
     c: "Tech",
+    d: "grep.app",
+    r: 0,
+    s: "Grep - Code Search for Developers by Vercel",
+    sc: "Programming",
+    t: "grep",
+    u: "https://grep.app/search?q={{{s}}}",
+  },
+  {
+    c: "Tech",
     d: "www.01net.com",
     r: 4,
     s: "01net",
