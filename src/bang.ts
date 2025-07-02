@@ -128,6 +128,14 @@ export const bangs = [
     "sc": "AI Chatbots"
   },
   {
+    "s": "Ithy",
+    "d": "ithy.com",
+    "t": "ithy",
+    "u": "https://ithy.com/?query={{{s}}}",
+    "c": "Online Services",
+    "sc": "AI Chatbots"
+  },
+  {
     c: "Tech",
     d: "www.01net.com",
     r: 4,
