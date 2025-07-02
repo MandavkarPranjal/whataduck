@@ -53,13 +53,18 @@ function getBangredirectUrl() {
         return null;
     }
 
-    const match = query.match(/!(\S+)/i);
+    // match both !bang and bang!
+    const prefixMatch = query.match(/!(\S+)/i);
+    const suffixMatch = query.match(/(\S+)!/);
 
-    const bangCandidate = match?.[1]?.toLowerCase();
+    const bangCandidate = (prefixMatch?.[1] ?? suffixMatch?.[1])?.toLowerCase();
     const selectedBang = bangs.find((b) => b.t === bangCandidate) ?? defaultBang;
 
-    // Remove the first bang from the query
-    const cleanQuery = query.replace(/!\S+\s*/i, "").trim();
+    // Remove the bang from either position
+    const cleanQuery = query
+        .replace(/!\S+\s*/i, "") // Remove prefix bang
+        .replace(/\s*\S+!/, "") // Remove suffix bang
+        .trim();
 
     // If the query is empty bang, redirect to home page instead of search page
     if (cleanQuery === "")
