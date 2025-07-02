@@ -31,6 +31,15 @@ export const bangs = [
   },
   {
     c: "AI",
+    d: "www.scira.ai",
+    r: 0,
+    s: "Scira AI",
+    sc: "AI",
+    t: "sai",
+    u: "https://scira.ai/?q={{{s}}}",
+  },
+  {
+    c: "AI",
     d: "www.chatgpt.com",
     r: 0,
     s: "ChatGPT",
