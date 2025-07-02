@@ -64,7 +64,7 @@ function searchBangs(query: string) {
         .filter(item => item.score > 0)
         .sort((a, b) => b.score - a.score)
         .map(item => item.bang);
-    
+
     // Cache results
     searchCache.set(query, filteredResults);
     return filteredResults;
@@ -77,10 +77,11 @@ function searchBangs(query: string) {
  * based on a less case-sensitive (normal) search.
  */
 function createHardSearchPage(): void {
-    // Set the innerHTML of the document body with a fixed header containing the search input,
+    // Render the search UI inside the #app container to leverage global styles
+    const app = document.querySelector<HTMLDivElement>("#app")!;
+    // Set the innerHTML of the app container with a fixed header containing the search input,
     // a scrollable results container, and a footer with enhanced visibility.
-    // The header now displays the total number of bangs with additional text.
-    document.body.innerHTML = `
+    app.innerHTML = `
     <div style="display: flex; flex-direction: column; min-height: 100vh; margin: 0; font-family: sans-serif; align-items: center; justify-content: space-between;">
       <div style="text-align: center; width: 100%; max-width: 600px; padding: 20px 0; display: flex; flex-direction: column; justify-content: center; flex-grow: 1;">
         <h2 style="margin-bottom: 20px;">${bangs.length} bangs and counting</h2>
@@ -97,8 +98,9 @@ function createHardSearchPage(): void {
     </div>
   `;
 
-    const input = document.getElementById("search-input") as HTMLInputElement;
-    const resultsContainer = document.getElementById("results-container") as HTMLDivElement;
+    // Scope element queries within the app container
+    const input = app.querySelector<HTMLInputElement>("#search-input")!;
+    const resultsContainer = app.querySelector<HTMLDivElement>("#results-container")!;
 
     /**
      * Renders the provided array of bang entries.
