@@ -84,6 +84,15 @@ export const bangs = [
     u: "https://grep.app/search?q={{{s}}}",
   },
   {
+    c: "Online Services",
+    d: "www.kagi.com",
+    r: 0,
+    s: "Kagi",
+    sc: "Search (Private)",
+    t: "kagi",
+    u: "https://www.kagi.com/search?q={{{s}}}",
+  },
+  {
     c: "Tech",
     d: "www.01net.com",
     r: 4,
