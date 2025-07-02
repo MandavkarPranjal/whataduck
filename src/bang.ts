@@ -135,6 +135,14 @@ export const bangs = [
     "c": "Online Services",
     "sc": "AI Chatbots"
   },
+   {
+    "s": "v0",
+    "d": "v0.dev",
+    "t": "v0",
+    "u": "https://v0.dev/chat?q={{{s}}}",
+    "c": "Online Services",
+    "sc": "AI Chatbots"
+  },
   {
     c: "Tech",
     d: "www.01net.com",
