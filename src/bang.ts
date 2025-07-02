@@ -165,6 +165,15 @@ export const bangs = [
         u: "https://www.phind.com/search?q={{{s}}}",
     },
     {
+        c: "Online Services",
+        d: "bing.com",
+        r: 0,
+        s: "Microsoft Copilot",
+        sc: "Tools",
+        t: "copilot",
+        u: "https://bing.com/chat?q={{{s}}}&sendquery=1",
+    },
+    {
         c: "Tech",
         d: "www.01net.com",
         r: 4,
