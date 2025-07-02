@@ -120,6 +120,14 @@ export const bangs = [
     u: "https://www.kagi.com/search?q={{{s}}}",
   },
   {
+    "s": "Felo",
+    "d": "felo.ai",
+    "t": "felo",
+    "u": "https://felo.ai/search?q={{{s}}}",
+    "c": "Online Services",
+    "sc": "AI Chatbots"
+  },
+  {
     c: "Tech",
     d: "www.01net.com",
     r: 4,
