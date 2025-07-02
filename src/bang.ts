@@ -22,6 +22,15 @@ export const bangs = [
   },
   {
     c: "AI",
+    d: "www.grok.com",
+    r: 0,
+    s: "Grok",
+    sc: "AI",
+    t: "grok",
+    u: "https://grok.com/?q={{{s}}}",
+  },
+  {
+    c: "AI",
     d: "www.chatgpt.com",
     r: 0,
     s: "ChatGPT",
