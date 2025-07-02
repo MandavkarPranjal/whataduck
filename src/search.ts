@@ -1,74 +1,47 @@
-import { bangs } from "./bang";
+import { bangs, Bang } from "./bang";
 import "./global.css";
+import Fuse from "fuse.js";
 
-/**
- * Computes a normal match score for the given query against the provided text,
- * using a case-insensitive search. The score is based on the position where
- * the query appears in the text:
- * - Returns 0 if the query is not found.
- * - Returns 100 if the text starts with the query.
- * - Otherwise, returns a value based on 100 minus the index of the match.
- *
- * @param query - The search query.
- * @param text - The text to search in.
- * @returns A number representing how well the text matches the query.
- */
-function computeNormalScore(query: string, text: string): number {
-    const lowerQuery = query.toLowerCase();
-    const lowerText = text.toLowerCase();
-    const idx = lowerText.indexOf(lowerQuery);
-    if (idx === -1) return 0;
-    return idx === 0 ? 100 : Math.max(1, 100 - idx);
-}
+// Initialize Fuse.js for fuzzy searching
+const normalizedBangs: Bang[] = bangs.map(bang => ({
+  c: (bang as any).c ?? "",
+  d: bang.d,
+  r: bang.r,
+  s: bang.s,
+  sc: (bang as any).sc ?? "",
+  t: bang.t,
+  u: bang.u
+}));
 
+const fuse = new Fuse<Bang>(normalizedBangs, {
+  keys: [
+    { name: 't', weight: 0.7 },
+    { name: 's', weight: 0.3 }
+  ],
+  threshold: 0.4
+});
 /**
- * Computes an extra bonus score for an exact, case-sensitive match.
- * If the text exactly equals the query (case-sensitive), returns 1000; otherwise, returns 0.
- *
- * @param query - The search query.
- * @param text - The text to check.
- * @returns 1000 if there's an exact match (case-sensitive), else 0.
- */
-function computeExactBonus(query: string, text: string): number {
-    return text === query ? 1000 : 0;
-}
-
-/**
- * Performs a hard string search for bangs.
- * It calculates scores for both the bang identifier ("t") and name ("s") using a normal,
- * case-insensitive search. Additionally, if either field exactly equals the query (case-sensitive),
- * a bonus is added to ensure that result appears first.
- * The bang identifier is given a higher weight.
- *
+ * Uses Fuse.js to perform fuzzy search on bangs.
  * @param query - The search query input by the user.
  * @returns An array of bang entries sorted by relevance.
  */
-const searchCache = new Map();
-
-function searchBangs(query: string) {
-    // Check cache first
-    const cached = searchCache.get(query);
-    if (cached) return cached;
-
-    const identifierWeight = 2;
-    const results = bangs.map((bang) => {
-        const scoreT = computeNormalScore(query, bang.t);
-        const scoreS = computeNormalScore(query, bang.s);
-        const bonusT = computeExactBonus(query, bang.t);
-        const bonusS = computeExactBonus(query, bang.s);
-        const totalScore = identifierWeight * (scoreT + bonusT) + (scoreS + bonusS);
-        return { bang, score: totalScore };
-    });
-
-    const filteredResults = results
-        .filter(item => item.score > 0)
-        .sort((a, b) => b.score - a.score)
-        .map(item => item.bang);
-
-    // Cache results
-    searchCache.set(query, filteredResults);
-    return filteredResults;
+function searchBangs(query: string): Bang[] {
+    if (!query) {
+        // Ensure all objects have required properties with default values
+        return bangs.map(bang => ({
+            c: (bang as any).c ?? "",
+            d: bang.d,
+            r: bang.r,
+            s: bang.s,
+            sc: (bang as any).sc ?? "",
+            t: bang.t,
+            u: bang.u
+        }));
+    }
+    const results = fuse.search(query);
+    return results.map(result => result.item);
 }
+    // Return full list when query is empty
 
 /**
  * Creates and renders a hard string search page.
