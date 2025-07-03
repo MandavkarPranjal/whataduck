@@ -130,6 +130,15 @@ export const bangs = [
     },
     {
         c: "Online Services",
+        d: "www.kagi.com/smallweb",
+        r: 0,
+        s: "Kagi smallweb",
+        sc: "Search random blogs",
+        t: "ksm",
+        u: "https://www.kagi.com/smallweb/?search={{{s}}}",
+    },
+    {
+        c: "Online Services",
         d: "felo.ai",
         r: 0,
         s: "Felo",
