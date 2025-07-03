@@ -76,6 +76,15 @@ export const bangs = [
     },
     {
         c: "AI",
+        d: "www.perplexity.ai",
+        r: 0,
+        s: "Perplexity Focus Internet (Pro search)",
+        sc: "AI",
+        t: "ppxp",
+        u: "https://www.perplexity.ai/search/new?focus=internet&q={{{s}}}",
+    },
+    {
+        c: "AI",
         d: "claude.ai",
         r: 0,
         s: "Claude",
