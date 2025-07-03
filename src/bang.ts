@@ -41407,7 +41407,7 @@ export const bangs = [
     s: "Normal Google(you're ai results)",
     sc: "Google",
     t: "gai",
-    u: "https://www.google.com/search?udm=14&q={{{s}}}",
+    u: "https://www.google.com/search?q={{{s}}}",
   },
   {
     c: "Online Services",
