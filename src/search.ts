@@ -103,17 +103,27 @@ function createHardSearchPage(): void {
     }
 
     // Listen for input changes to update the search results.
+    // Use debouncing to prevent lag during typing
+    let debounceTimer: number;
     input.addEventListener("input", () => {
-        const query = input.value.trim();
-        if (query === "") {
-            displayFullList();
-        } else {
-            const results = searchBangs(query);
-            displayResults(results);
-        }
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            const query = input.value.trim();
+            if (query === "") {
+                displayFullList();
+            } else {
+                const results = searchBangs(query);
+                displayResults(results);
+            }
+        }, 150); // 150ms delay to debounce input
     });
 
     // Initially show the full list.
+    // Add a focus event to the input element for better UX
+    input.addEventListener("focus", () => {
+        input.select(); // Select all text when input is focused
+    });
+    
     displayFullList();
 }
 
