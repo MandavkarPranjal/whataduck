@@ -158,6 +158,11 @@ textarea {
   padding-bottom: 60px;
 }
 
+/* Add space between pagination controls and footer */
+#pagination-controls {
+  margin-bottom: 60px !important;
+}
+
 @media (prefers-color-scheme: dark) {
   body {
     color: #ddd;
