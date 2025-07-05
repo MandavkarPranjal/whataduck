@@ -162,21 +162,21 @@ function createHardSearchPage(): void {
         // Previous button
         controlsHtml += `<button ${currentPage === 1 ? 'disabled' : ''} id="prev-page"
             class="pagination-button prev-button"
-            style="${buttonStyles} ${currentPage === 1 ? disabledStyles : ''}">
-            ← Prev
+            style="${buttonStyles} ${currentPage === 1 ? disabledStyles : ''}; display: inline-flex; align-items: center; justify-content: center;">
+            <span style="display: inline-block; vertical-align: middle;">&lt; Prev</span>
         </button>`;
 
         // Page indicator
         controlsHtml += `<span class="pagination-indicator"
-            style="${pageIndicatorStyles}">
+            style="${pageIndicatorStyles}; display: inline-flex; align-items: center; justify-content: center;">
             ${currentPage} / ${totalPages}
         </span>`;
 
         // Next button
         controlsHtml += `<button ${currentPage === totalPages ? 'disabled' : ''} id="next-page"
             class="pagination-button next-button"
-            style="${buttonStyles} ${currentPage === totalPages ? disabledStyles : ''}">
-            Next →
+            style="${buttonStyles} ${currentPage === totalPages ? disabledStyles : ''}; display: inline-flex; align-items: center; justify-content: center;">
+            <span style="display: inline-block; vertical-align: middle;">Next &gt;</span>
         </button>`;
 
         paginationControls.innerHTML = controlsHtml;
