@@ -79,10 +79,9 @@ function createHardSearchPage(): void {
     const paginationControls = app.querySelector<HTMLDivElement>("#pagination-controls")!;
 
     // Define pagination state variables
-    // Declare but don't initialize currentPage here - it will be set in displayResults
-    let currentPage: number; 
     const itemsPerPage = 20;
     let allResults: typeof bangs = [];
+    // Removed standalone currentPage variable - only using the parameter in displayResults
 
     /**
      * Renders the provided array of bang entries with pagination.
@@ -90,13 +89,12 @@ function createHardSearchPage(): void {
      * @param results - An array of bang entries to display.
      * @param page - The current page number (default: 1)
      */
-    function displayResults(results: typeof bangs, page: number = 1): void {
+     function displayResults(results: typeof bangs, page: number = 1): void {
         // Store all results for pagination
         allResults = results;
-        currentPage = page;
-
-        if (results.length === 0) {
-            resultsContainer.innerHTML = "No results found.";
+        // Removed assignment to currentPage variable
+        
+        if (results.length === 0) {            resultsContainer.innerHTML = "No results found.";
             paginationControls.innerHTML = "";
             return;
         }
@@ -228,7 +226,7 @@ function createHardSearchPage(): void {
                 }
             });
         }
-
+        
         if (nextButton) {
             nextButton.addEventListener("click", () => {
                 if (currentPage < totalPages) {
@@ -236,7 +234,9 @@ function createHardSearchPage(): void {
                 }
             });
         }
-    }
+        
+        // Save the current page as a data attribute on the container for state persistence
+        paginationControls.dataset.currentPage = currentPage.toString();    }
 
     /**
      * Displays the full list of bangs with pagination.
