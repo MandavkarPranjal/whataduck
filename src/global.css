@@ -199,6 +199,12 @@ textarea {
     color: #fff;
   }
 
+   select {
+    border-color: #3d3d3d;
+    background-color: #191919;
+    color: #fff;
+  }
+
   .copy-button img {
     filter: invert(1);
   }
