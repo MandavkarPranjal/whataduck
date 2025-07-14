@@ -58,6 +58,17 @@ function createHardSearchPage(): void {
     <div style="display: flex; flex-direction: column; min-height: 100vh; margin: 0; font-family: sans-serif; align-items: center; justify-content: space-between;">
       <div style="text-align: center; width: 100%; max-width: 600px; padding: 20px 0; display: flex; flex-direction: column; justify-content: center; flex-grow: 1;">
         <h2 style="margin-bottom: 20px;">${bangs.length} bangs and counting</h2>
+        
+        <div style="margin-bottom: 20px;">
+          <label for="search-default-bang-select" style="display: block; margin-bottom: 8px; font-weight: 500;">Default search engine:</label>
+          <select id="search-default-bang-select" style="padding: 8px; margin-bottom: 12px; border-radius: 4px; border: 1px solid #ccc; min-width: 200px;">
+            <!-- Options will be populated by JavaScript -->
+          </select>
+          <div style="font-size: 12px; color: #666; margin-top: 4px;">
+            Your custom URL: <span id="custom-url-display" style="font-family: monospace; background: #f5f5f5; padding: 2px 4px; border-radius: 2px;"></span>
+          </div>
+        </div>
+        
         <input id="search-input" type="text" placeholder="Search bangs"
           style="width:100%; padding:10px; font-size:16px; box-sizing:border-box; margin-bottom:20px;" />
         <div id="results-container" style="width: 100%; flex: 1; overflow-y: auto; padding: 0 20px; box-sizing: border-box;">
@@ -77,6 +88,58 @@ function createHardSearchPage(): void {
     const input = app.querySelector<HTMLInputElement>("#search-input")!;
     const resultsContainer = app.querySelector<HTMLDivElement>("#results-container")!;
     const paginationControls = app.querySelector<HTMLDivElement>("#pagination-controls")!;
+    const defaultBangSelect = app.querySelector<HTMLSelectElement>("#search-default-bang-select")!;
+    const customUrlDisplay = app.querySelector<HTMLSpanElement>("#custom-url-display")!;
+
+    // Setup default bang selector
+    const popularBangs = [
+        { t: "ddg", s: "DuckDuckGo" },
+        { t: "g", s: "Google" },
+        { t: "b", s: "Bing" },
+        { t: "y", s: "Yahoo" },
+        { t: "cgpt", s: "ChatGPT" },
+        { t: "grok", s: "Grok" },
+        { t: "gh", s: "GitHub" },
+        { t: "so", s: "Stack Overflow" },
+        { t: "yt", s: "YouTube" },
+        { t: "w", s: "Wikipedia" },
+        { t: "a", s: "Amazon" },
+        { t: "tw", s: "Twitter" },
+        { t: "r", s: "Reddit" }
+    ];
+
+    const currentSelectedBang = localStorage.getItem("default-bang") ?? "ddg";
+    const currentBangObj = bangs.find(b => b.t === currentSelectedBang);
+    
+    let selectOptions = "";
+    popularBangs.forEach(bang => {
+        const bangDetails = bangs.find(b => b.t === bang.t);
+        if (bangDetails) {
+            const selected = bang.t === currentSelectedBang ? " selected" : "";
+            selectOptions += `<option value="${bang.t}"${selected}>${bang.s} (!${bang.t})</option>`;
+        }
+    });
+
+    // If current default is not in popular list, add it
+    if (currentBangObj && !popularBangs.find(pb => pb.t === currentSelectedBang)) {
+        selectOptions += `<option value="${currentSelectedBang}" selected>${currentBangObj.s} (!${currentSelectedBang})</option>`;
+    }
+
+    defaultBangSelect.innerHTML = selectOptions;
+
+    // Update custom URL display
+    function updateCustomUrlDisplay(bangTag: string) {
+        customUrlDisplay.textContent = `https://whataduck.vercel.app?d=${bangTag}&q=%s`;
+    }
+    
+    updateCustomUrlDisplay(currentSelectedBang);
+
+    // Handle default bang selection change
+    defaultBangSelect.addEventListener("change", () => {
+        const selectedBang = defaultBangSelect.value;
+        localStorage.setItem("default-bang", selectedBang);
+        updateCustomUrlDisplay(selectedBang);
+    });;
 
     // Define pagination state variables
     const itemsPerPage = 20;
