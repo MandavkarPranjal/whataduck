@@ -192,6 +192,15 @@ export const bangs = [
         u: "https://bing.com/chat?q={{{s}}}&sendquery=1",
     },
     {
+        c: "Online Services",
+        d: "freetier.fyi/",
+        r: 0,
+        s: "Freetier tools",
+        sc: "Tools",
+        t: "free",
+        u: "https://freetier.fyi/?q={{{s}}}",
+    },
+    {
         c: "Tech",
         d: "www.01net.com",
         r: 4,
