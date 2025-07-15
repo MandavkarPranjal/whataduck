@@ -129,6 +129,15 @@ export const bangs = [
         u: "https://grep.app/search?q={{{s}}}",
     },
     {
+        c: "Tech",
+        d: "21st.dev",
+        r: 0,
+        s: "21st.dev - Best component library for developer",
+        sc: "Programming",
+        t: "21st",
+        u: "https://21st.dev/q/{{{s}}}",
+    },
+    {
         c: "Online Services",
         d: "www.kagi.com",
         r: 0,
