@@ -120,6 +120,15 @@ export const bangs = [
         u: "https://hianime.to/search?keyword={{{s}}}",
     },
     {
+        c: "Entertainment",
+        d: "animekai.to",
+        r: 0,
+        s: "AnimeKai",
+        sc: "Video",
+        t: "anik",
+        u: "https://animekai.to/browser?keyword={{{s}}}"
+    },
+    {
         c: "Tech",
         d: "grep.app",
         r: 0,
