@@ -219,6 +219,15 @@ export const bangs = [
         u: "https://freetier.fyi/?q={{{s}}}",
     },
     {
+        c: "Entertainment",
+        d: "ComicK",
+        r: 0,
+        s: "ComicK",
+        sc: "Manga",
+        t: "cok",
+        u: "https://comick.io/search?q={{{s}}}",
+    },
+    {
         c: "Tech",
         d: "www.01net.com",
         r: 4,
