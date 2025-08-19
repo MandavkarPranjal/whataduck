@@ -186,6 +186,13 @@ textarea {
   .blocked-icon { font-size:48px; }
 }
 
+.modes-trigger { padding:2px 6px;border:1px solid #ccc;border-radius:4px;font-size:12px;line-height:1; }
+.modes-trigger:hover { background:#f2f2f2; }
+.modes-popover { position:absolute;top:100%;right:0;margin-top:4px;padding:8px 10px;background:#fff;border:1px solid #ddd;border-radius:8px;box-shadow:0 4px 16px -4px rgba(0,0,0,.15);z-index:10;font-size:12px;display:none; }
+.modes-popover form { display:flex;flex-direction:column;gap:4px; }
+.modes-popover label { display:flex;gap:6px;align-items:center;font-size:12px; }
+.modes-popover input[type=radio] { accent-color:#111; }
+
 @media (prefers-color-scheme: dark) {
   body {
     color: #ddd;
@@ -264,4 +271,9 @@ textarea {
   .blocked-btn-primary { background:#e4e4e4;color:#111; }
   .blocked-btn-primary:hover { background:#fff; }
   .blocked-btn-primary:disabled,.blocked-btn-primary[aria-disabled="true"] { background:#555;color:#999; }
+  .modes-trigger { border-color:#444; }
+  .modes-trigger:hover { background:#1f1f1f; }
+  .modes-popover { background:#1c1c1c;border-color:#2a2a2a;box-shadow:0 4px 20px -4px rgba(0,0,0,.55); }
+  .modes-popover label { color:#ccc; }
+  .modes-popover input[type=radio] { accent-color:#e4e4e4; }
 }

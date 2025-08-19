@@ -2,22 +2,47 @@ import './global.css';
 import Fuse from 'fuse.js';
 
 interface Bang { t: string; s: string; d: string; r: number; u: string; c?: string; sc?: string; }
-interface BlockState { blocked: Set<string>; }
+interface BlockState { legacy: Set<string>; modes: { [tag: string]: { root?: boolean; search?: boolean } }; rootSet: Set<string>; searchSet: Set<string>; }
 
-const STORAGE_KEY = 'blocked-bangs';
+const LEGACY_KEY = 'blocked-bangs';
+const MODES_KEY = 'blocked-bangs-modes';
 
-function loadBlocked(): Set<string> {
+function loadLegacy(): Set<string> {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(LEGACY_KEY);
     if (!raw) return new Set();
     const arr = JSON.parse(raw);
     if (Array.isArray(arr)) return new Set(arr.map(s => String(s).toLowerCase()));
     return new Set();
   } catch { return new Set(); }
 }
-function saveBlocked(blocked: Set<string>) { localStorage.setItem(STORAGE_KEY, JSON.stringify([...blocked])); }
+function saveLegacy(set: Set<string>) { localStorage.setItem(LEGACY_KEY, JSON.stringify([...set])); }
 
-const state: BlockState = { blocked: loadBlocked() };
+function loadModes(): { [tag: string]: { root?: boolean; search?: boolean } } {
+  try {
+    const raw = localStorage.getItem(MODES_KEY);
+    if (!raw) return {};
+    const obj = JSON.parse(raw);
+    if (obj && typeof obj === 'object' && !Array.isArray(obj)) return obj;
+    return {};
+  } catch { return {}; }
+}
+function saveModes(m: { [tag: string]: { root?: boolean; search?: boolean } }) { localStorage.setItem(MODES_KEY, JSON.stringify(m)); }
+
+function recomputeSets(state: BlockState) {
+  const root = new Set<string>();
+  const search = new Set<string>();
+  for (const k in state.modes) {
+    const low = k.toLowerCase();
+    if (state.modes[k].root) root.add(low);
+    if (state.modes[k].search) search.add(low);
+  }
+  state.legacy.forEach(tag => { if (!(tag in state.modes)) { root.add(tag); search.add(tag); } });
+  state.rootSet = root; state.searchSet = search;
+}
+
+const state: BlockState = { legacy: loadLegacy(), modes: loadModes(), rootSet: new Set(), searchSet: new Set() };
+recomputeSets(state);
 
 const bangInput = document.getElementById('bang-input') as HTMLInputElement;
 const addForm = document.getElementById('add-form') as HTMLFormElement;
@@ -56,12 +81,32 @@ function ensureLoaded(): Promise<void> {
 
 function renderBlocked() {
   blockedChips.innerHTML = '';
-  if (state.blocked.size === 0) blockedEmpty.style.display = 'block'; else blockedEmpty.style.display = 'none';
-  [...state.blocked].sort().forEach(tag => {
+  const active = new Set<string>();
+  state.rootSet.forEach(t => active.add(t));
+  state.searchSet.forEach(t => active.add(t));
+  if (active.size === 0) blockedEmpty.style.display = 'block'; else blockedEmpty.style.display = 'none';
+  [...active].sort().forEach(tag => {
     const chip = document.createElement('div');
     chip.className = 'chip';
-    chip.innerHTML = `!${tag} <button aria-label="Unblock ${tag}">×</button>`;
-    chip.querySelector('button')!.addEventListener('click', () => { state.blocked.delete(tag); saveBlocked(state.blocked); renderBlocked(); updateRowsBlockedState(); });
+    const root = state.rootSet.has(tag);
+    const search = state.searchSet.has(tag);
+    const labelParts = [] as string[];
+    if (root) labelParts.push('root');
+    if (search) labelParts.push('search');
+    let suffix = '';
+    if (root && !search) suffix = ' (R)';
+    else if (!root && search) suffix = ' (S)';
+    chip.innerHTML = `!${tag}<span style="font-size:11px;color:#666;">${suffix}</span> <button aria-label="Unblock ${tag}">×</button>`;
+    chip.querySelector('button')!.addEventListener('click', () => {
+      // Unblock both modes: remove from modes & legacy if exists
+      delete state.modes[tag];
+      state.legacy.delete(tag);
+      recomputeSets(state);
+      saveModes(state.modes);
+      saveLegacy(state.legacy);
+      renderBlocked();
+      updateRowsBlockedState();
+    });
     blockedChips.appendChild(chip);
   });
 }
@@ -102,34 +147,147 @@ function renderMore(initial = false) {
   }
 }
 
-function rowHtml(b: Bang): string {
-  const blocked = state.blocked.has(b.t.toLowerCase());
+function rowHtml(b: Bang): string { /* updated for popover modes */
+  const tag = b.t.toLowerCase();
+  const root = state.rootSet.has(tag);
+  const search = state.searchSet.has(tag);
+  const blocked = root || search;
+  let modeSuffix = '';
+  if (blocked) {
+    if (root && !search) modeSuffix = ' (R)';
+    else if (!root && search) modeSuffix = ' (S)';
+  }
   return `<tr data-tag="${b.t}">
-    <td style="width:30%;"><span class="tag">!${b.t}</span></td>
+    <td style="width:20%;"><span class="tag">!${b.t}</span></td>
     <td>${b.s}</td>
-    <td style="width:20%; text-align:right;" class="actions">
-      <button class="small ${blocked ? 'remove' : ''}" data-action="toggle">${blocked ? 'Unblock' : 'Block'}</button>
+    <td style="width:40%; text-align:right; position:relative;" class="actions">
+      <button class="small" data-action="toggle-main" aria-pressed="${blocked}" title="${blocked ? 'Unblock' : 'Block'} this bang">${blocked ? 'Unblock' : 'Block'}</button>
+      <button class="small modes-trigger" data-action="modes" style="margin-left:4px;${blocked ? '' : 'display:none;'}" aria-haspopup="true" aria-expanded="false" title="Adjust block modes">⋯</button>
+      <div class="modes-popover" role="dialog" aria-label="Block modes" style="display:none;">
+        <form data-action="modes-form">
+          <label><input type="radio" name="mode-${b.t}" value="both" ${(root&&search)?'checked':''}/> Both</label>
+          <label><input type="radio" name="mode-${b.t}" value="root" ${(root&&!search)?'checked':''}/> Root only</label>
+            <label><input type="radio" name="mode-${b.t}" value="search" ${(!root&&search)?'checked':''}/> Search only</label>
+          <div style="text-align:right;margin-top:6px;">
+            <button type="button" data-action="close-pop" class="small">Close</button>
+          </div>
+        </form>
+      </div>
+      <span class="mode-suffix" style="font-size:11px;color:#666;margin-left:6px;">${modeSuffix}</span>
     </td>
   </tr>`;
 }
 
-function attachRowHandlers(tr: HTMLTableRowElement) {
+function attachRowHandlers(tr: HTMLTableRowElement) { /* updated handlers for popover */
   const tag = tr.getAttribute('data-tag')!.toLowerCase();
-  tr.addEventListener('click', (e) => {
-    if ((e.target as HTMLElement).tagName === 'BUTTON') return; // button handles itself
-    toggle(tag);
+  const toggleBtn = tr.querySelector('button[data-action=toggle-main]') as HTMLButtonElement;
+  const modesBtn = tr.querySelector('button[data-action=modes]') as HTMLButtonElement;
+  const pop = tr.querySelector('.modes-popover') as HTMLDivElement;
+  const form = pop.querySelector('form[data-action=modes-form]') as HTMLFormElement;
+  const closeBtn = pop.querySelector('button[data-action=close-pop]') as HTMLButtonElement;
+  const suffixSpan = tr.querySelector('.mode-suffix') as HTMLSpanElement;
+
+  function apply(blockRoot: boolean, blockSearch: boolean) {
+    // remove legacy if modifying
+    state.legacy.delete(tag);
+    if (!blockRoot && !blockSearch) {
+      delete state.modes[tag];
+    } else {
+      state.modes[tag] = { root: blockRoot, search: blockSearch };
+    }
+    recomputeSets(state);
+    saveModes(state.modes);
+    saveLegacy(state.legacy);
+    // update UI bits inline (avoid full rerender of table chunk)
+    const blocked = blockRoot || blockSearch;
+    toggleBtn.textContent = blocked ? 'Unblock' : 'Block';
+    toggleBtn.setAttribute('aria-pressed', String(blocked));
+    modesBtn.style.display = blocked ? '' : 'none';
+    let modeSuffix = '';
+    if (blocked) {
+      if (blockRoot && !blockSearch) modeSuffix = ' (R)';
+      else if (!blockRoot && blockSearch) modeSuffix = ' (S)';
+    }
+    suffixSpan.textContent = modeSuffix;
+    renderBlocked();
+  }
+
+  toggleBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    const currentlyBlocked = state.rootSet.has(tag) || state.searchSet.has(tag);
+    if (currentlyBlocked) {
+      // unblock all
+      delete state.modes[tag];
+      state.legacy.delete(tag);
+      recomputeSets(state);
+      saveModes(state.modes); saveLegacy(state.legacy);
+      toggleBtn.textContent = 'Block';
+      toggleBtn.setAttribute('aria-pressed', 'false');
+      modesBtn.style.display = 'none';
+      suffixSpan.textContent = '';
+      renderBlocked();
+    } else {
+      // block both
+      delete state.modes[tag]; // ensure not duplicating legacy
+      state.legacy.add(tag); // treat as both (legacy semantics)
+      recomputeSets(state);
+      saveLegacy(state.legacy); saveModes(state.modes);
+      toggleBtn.textContent = 'Unblock';
+      toggleBtn.setAttribute('aria-pressed', 'true');
+      modesBtn.style.display = '';
+      suffixSpan.textContent = '';
+      renderBlocked();
+    }
   });
-  const button = tr.querySelector('button[data-action=toggle]')!;
-  button.addEventListener('click', (e) => { e.stopPropagation(); toggle(tag); });
+
+  function openPop() {
+    if (pop.style.display === 'block') return;
+    // sync radios with current state
+    const root = state.rootSet.has(tag);
+    const search = state.searchSet.has(tag);
+    (form.querySelector(`input[value="both"]`) as HTMLInputElement).checked = root && search;
+    (form.querySelector(`input[value="root"]`) as HTMLInputElement).checked = root && !search;
+    (form.querySelector(`input[value="search"]`) as HTMLInputElement).checked = !root && search;
+    pop.style.display = 'block';
+    modesBtn.setAttribute('aria-expanded', 'true');
+    const firstRadio = form.querySelector('input[type=radio]:checked') as HTMLInputElement || form.querySelector('input[type=radio]') as HTMLInputElement;
+    firstRadio?.focus();
+    document.addEventListener('mousedown', outsideHandler);
+    document.addEventListener('keydown', escHandler);
+  }
+  function closePop() {
+    if (pop.style.display === 'none') return;
+    pop.style.display = 'none';
+    modesBtn.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('mousedown', outsideHandler);
+    document.removeEventListener('keydown', escHandler);
+    modesBtn.focus();
+  }
+  function outsideHandler(ev: MouseEvent) {
+    if (!pop.contains(ev.target as Node) && ev.target !== modesBtn) closePop();
+  }
+  function escHandler(ev: KeyboardEvent) { if (ev.key === 'Escape') { closePop(); } }
+
+  modesBtn.addEventListener('click', e => { e.stopPropagation(); if (pop.style.display === 'block') closePop(); else openPop(); });
+  closeBtn.addEventListener('click', e => { e.stopPropagation(); closePop(); });
+
+  form.addEventListener('change', () => {
+    const val = (form.querySelector('input[type=radio]:checked') as HTMLInputElement)?.value;
+    if (val === 'both') apply(true, true);
+    else if (val === 'root') apply(true, false);
+    else if (val === 'search') apply(false, true);
+  });
 }
 
 function updateRowsBlockedState() {
   resultsDiv.querySelectorAll('tr').forEach(tr => {
     const tag = tr.getAttribute('data-tag')!.toLowerCase();
-    const blocked = state.blocked.has(tag);
-    const btn = tr.querySelector('button[data-action=toggle]') as HTMLButtonElement;
-    btn.textContent = blocked ? 'Unblock' : 'Block';
-    btn.classList.toggle('remove', blocked);
+    const rootCb = tr.querySelector('input[data-mode=root]') as HTMLInputElement | null;
+    const searchCb = tr.querySelector('input[data-mode=search]') as HTMLInputElement | null;
+    const clearBtn = tr.querySelector('button[data-action=clear]') as HTMLButtonElement | null;
+    if (rootCb) rootCb.checked = state.rootSet.has(tag);
+    if (searchCb) searchCb.checked = state.searchSet.has(tag);
+    if (clearBtn) clearBtn.style.visibility = (state.rootSet.has(tag) || state.searchSet.has(tag)) ? 'visible' : 'hidden';
   });
 }
 
@@ -159,13 +317,7 @@ function maybeLoadMoreOnScroll() {
   }
 }
 
-function toggle(tag: string) {
-  tag = tag.toLowerCase();
-  if (state.blocked.has(tag)) state.blocked.delete(tag); else state.blocked.add(tag);
-  saveBlocked(state.blocked);
-  renderBlocked();
-  updateRowsBlockedState();
-}
+// Legacy toggle removed (obsolete)
 
 addForm.addEventListener('submit', async e => {
   e.preventDefault();
@@ -178,8 +330,12 @@ addForm.addEventListener('submit', async e => {
     setTimeout(() => bangInput.setCustomValidity(''), 1500);
     return;
   }
-  state.blocked.add(tag);
-  saveBlocked(state.blocked);
+  // Add as both root + search blocked (maintain legacy semantics for manual add)
+  delete state.modes[tag]; // ensure legacy style not duplicated
+  state.legacy.add(tag);
+  recomputeSets(state);
+  saveLegacy(state.legacy);
+  saveModes(state.modes);
   bangInput.value = '';
   renderBlocked();
   updateRowsBlockedState();
