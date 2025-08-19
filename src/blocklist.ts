@@ -123,7 +123,7 @@ function renderBlocked(){
 function rowHtml(b: Bang): string {
   const mode = getMode(b.t);
   const label = modeLabel(mode);
-  return `<tr data-tag="${b.t}" class="row-mode-${mode}">
+  return `<tr data-tag="${b.t}" class="row-mode-${mode}" aria-label="Bang !${b.t} (${modeLabel(mode)})">
     <td style="width:20%;"><span class="tag">!${b.t}</span></td>
     <td>${b.s}</td>
     <td style="width:40%; text-align:right;">

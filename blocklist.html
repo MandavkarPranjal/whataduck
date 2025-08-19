@@ -77,7 +77,14 @@
       <input id="filter-input" type="text" placeholder="Loading bang list…" />
       <div class="hint">Click a row to toggle block. Total: <span id="total-count">—</span></div>
     </div>
-    <div class="results" id="results"></div>
+     <div class="results" id="results"></div>
+     <div style="margin-top:12px;font-size:12px;color:#666;display:flex;flex-wrap:wrap;gap:12px;">
+       <span><strong>Mode legend:</strong></span>
+       <span><span class="tag" style="background:#ffe7e7;">Both</span> blocked for root + search</span>
+       <span><span class="tag" style="background:#fff3d1;">Root</span> blocked only for root redirects</span>
+       <span><span class="tag" style="background:#e3f3ff;">Search</span> blocked only when used in query</span>
+       <span><span class="tag" style="background:#eee;">Block</span> click to start blocking</span>
+     </div>
   </div>
   <script type="module" src="/src/blocklist.ts"></script>
 </body>

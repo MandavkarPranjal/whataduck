@@ -188,10 +188,18 @@ textarea {
 
 .hidden { display:none !important; }
 .results tr { cursor:pointer; }
-.results tr.is-blocked { background:#fff8f8; }
+ .results tr.is-blocked { background:#fff8f8; }
+ .results tr.row-mode-both { background:#fff2f2; }
+ .results tr.row-mode-root { background:#fff9e6; }
+ .results tr.row-mode-search { background:#f1f8ff; }
+ .results tr.row-mode-none { background:transparent; }
 .results tr.is-blocked:hover { background:#ffecec; }
 @media (prefers-color-scheme: dark) {
-  .results tr.is-blocked { background:#2a1d1d; }
+   .results tr.is-blocked { background:#2a1d1d; }
+   .results tr.row-mode-both { background:#311d1d; }
+   .results tr.row-mode-root { background:#2e2715; }
+   .results tr.row-mode-search { background:#162432; }
+   .results tr.row-mode-none { background:transparent; }
   .results tr.is-blocked:hover { background:#392626; }
 }
 
