@@ -347,3 +347,28 @@ renderBlocked();
     setTimeout(start, 150);
   }
 })();
+
+// Outside click + global Escape handling for open mode menus (accessibility/usability)
+(function installGlobalMenuDismiss(){
+  function closeAllMenus(focusTrigger = false){
+    document.querySelectorAll('.mode-menu:not([hidden])').forEach(menu => {
+      const m = menu as HTMLDivElement;
+      m.hidden = true;
+      const trigger = m.parentElement?.querySelector('.mode-trigger') as HTMLButtonElement | null;
+      if (trigger) trigger.setAttribute('aria-expanded','false');
+      if (focusTrigger && trigger) trigger.focus();
+    });
+  }
+  document.addEventListener('mousedown', ev => {
+    const target = ev.target as HTMLElement;
+    if (target.closest('.mode-menu') || target.closest('.mode-trigger')) return;
+    closeAllMenus();
+  });
+  document.addEventListener('keydown', ev => {
+    if (ev.key === 'Escape') {
+      // only close if any open
+      const open = document.querySelector('.mode-menu:not([hidden])');
+      if (open) { ev.stopPropagation(); closeAllMenus(true); }
+    }
+  });
+})();
