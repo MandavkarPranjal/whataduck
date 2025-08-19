@@ -79,36 +79,9 @@ function ensureLoaded(): Promise<void> {
   }).finally(() => { loading = false; });
 }
 
-function renderBlocked() {
+function renderBlocked() { /* removed UI chips: just update counts / maybe future summary */
   blockedChips.innerHTML = '';
-  const active = new Set<string>();
-  state.rootSet.forEach(t => active.add(t));
-  state.searchSet.forEach(t => active.add(t));
-  if (active.size === 0) blockedEmpty.style.display = 'block'; else blockedEmpty.style.display = 'none';
-  [...active].sort().forEach(tag => {
-    const chip = document.createElement('div');
-    chip.className = 'chip';
-    const root = state.rootSet.has(tag);
-    const search = state.searchSet.has(tag);
-    const labelParts = [] as string[];
-    if (root) labelParts.push('root');
-    if (search) labelParts.push('search');
-    let suffix = '';
-    if (root && !search) suffix = ' (R)';
-    else if (!root && search) suffix = ' (S)';
-    chip.innerHTML = `!${tag}<span style="font-size:11px;color:#666;">${suffix}</span> <button aria-label="Unblock ${tag}">×</button>`;
-    chip.querySelector('button')!.addEventListener('click', () => {
-      // Unblock both modes: remove from modes & legacy if exists
-      delete state.modes[tag];
-      state.legacy.delete(tag);
-      recomputeSets(state);
-      saveModes(state.modes);
-      saveLegacy(state.legacy);
-      renderBlocked();
-      updateRowsBlockedState();
-    });
-    blockedChips.appendChild(chip);
-  });
+  blockedEmpty.style.display = 'none';
 }
 
 function buildTableIfNeeded() {
@@ -123,10 +96,8 @@ function renderMore(initial = false) {
   const tbody = resultsDiv.querySelector('tbody')!;
   const targetPreloaded = Math.min(PRELOAD, currentFiltered.length);
   let available = initial ? Math.min(CHUNK, currentFiltered.length) : 0;
-  if (!initial) {
-    // decide how many to append this call
+    if (!initial) {
     if (visibleCount < targetPreloaded) {
-      // within preloaded window
       available = Math.min(CHUNK, targetPreloaded - visibleCount);
     } else {
       available = Math.min(CHUNK, currentFiltered.length - visibleCount);
@@ -147,151 +118,164 @@ function renderMore(initial = false) {
   }
 }
 
-function rowHtml(b: Bang): string { /* updated for popover modes */
+function rowHtml(b: Bang): string { /* single button with dropdown */
   const tag = b.t.toLowerCase();
   const root = state.rootSet.has(tag);
   const search = state.searchSet.has(tag);
   const blocked = root || search;
-  let modeSuffix = '';
+  let label = 'Block';
   if (blocked) {
-    if (root && !search) modeSuffix = ' (R)';
-    else if (!root && search) modeSuffix = ' (S)';
+    if (root && search) label = 'Both';
+    else if (root && !search) label = 'Root';
+    else if (!root && search) label = 'Search';
   }
   return `<tr data-tag="${b.t}">
     <td style="width:20%;"><span class="tag">!${b.t}</span></td>
     <td>${b.s}</td>
     <td style="width:40%; text-align:right; position:relative;" class="actions">
-      <button class="btn ${blocked ? 'btn-danger' : 'btn-outline'}" data-action="toggle-main" aria-pressed="${blocked}" title="${blocked ? 'Unblock' : 'Block'} this bang">${blocked ? 'Unblock' : 'Block'}</button>
-      <button class="btn btn-condensed modes-trigger" data-action="modes" style="margin-left:4px;${blocked ? '' : 'display:none;'}" aria-haspopup="true" aria-expanded="false" title="Adjust block modes">⋯</button>
-      <div class="modes-popover" role="dialog" aria-label="Block modes" style="display:none;">
-        <form data-action="modes-form">
-          <label><input type="radio" name="mode-${b.t}" value="both" ${(root&&search)?'checked':''}/> Both</label>
-          <label><input type="radio" name="mode-${b.t}" value="root" ${(root&&!search)?'checked':''}/> Root only</label>
-            <label><input type="radio" name="mode-${b.t}" value="search" ${(!root&&search)?'checked':''}/> Search only</label>
-          <div style="text-align:right;margin-top:6px;">
-            <button type="button" data-action="close-pop" class="small">Close</button>
-          </div>
-        </form>
+      <button class="btn btn-outline mode-trigger" data-action="mode-trigger" aria-haspopup="true" aria-expanded="false" aria-pressed="${blocked}" data-blocked="${blocked}">${label}${blocked ? ' ▾' : ''}</button>
+      <div class="mode-menu" role="menu" hidden>
+        <button role="menuitemradio" class="mode-item" data-mode="both" aria-checked="${root && search}">Both</button>
+        <button role="menuitemradio" class="mode-item" data-mode="root" aria-checked="${root && !search}">Root</button>
+        <button role="menuitemradio" class="mode-item" data-mode="search" aria-checked="${!root && search}">Search</button>
+        <div class="separator" role="separator"></div>
+        <button role="menuitem" class="mode-item unblock" data-mode="unblock" ${blocked ? '' : 'disabled'}>Unblock</button>
       </div>
-      <span class="mode-suffix" style="font-size:11px;color:#666;margin-left:6px;">${modeSuffix}</span>
     </td>
   </tr>`;
 }
 
-function attachRowHandlers(tr: HTMLTableRowElement) { /* updated handlers for popover */
+const lastModeMemory: Record<string, 'both' | 'root' | 'search'> = {};
+
+function attachRowHandlers(tr: HTMLTableRowElement) { /* handlers for dropdown */
   const tag = tr.getAttribute('data-tag')!.toLowerCase();
-  const toggleBtn = tr.querySelector('button[data-action=toggle-main]') as HTMLButtonElement;
-  const modesBtn = tr.querySelector('button[data-action=modes]') as HTMLButtonElement;
-  const pop = tr.querySelector('.modes-popover') as HTMLDivElement;
-  const form = pop.querySelector('form[data-action=modes-form]') as HTMLFormElement;
-  const closeBtn = pop.querySelector('button[data-action=close-pop]') as HTMLButtonElement;
-  const suffixSpan = tr.querySelector('.mode-suffix') as HTMLSpanElement;
+  const trigger = tr.querySelector('button.mode-trigger') as HTMLButtonElement;
+  const menu = tr.querySelector('.mode-menu') as HTMLDivElement;
+
+  function updateTrigger(blockRoot: boolean, blockSearch: boolean) {
+    const blocked = blockRoot || blockSearch;
+    trigger.dataset.blocked = String(blocked);
+    trigger.setAttribute('aria-pressed', String(blocked));
+    let label = 'Block';
+    if (blocked) {
+      if (blockRoot && blockSearch) label = 'Both';
+      else if (blockRoot && !blockSearch) label = 'Root';
+      else if (!blockRoot && blockSearch) label = 'Search';
+      trigger.innerHTML = label + ' ▾';
+    } else {
+      trigger.textContent = 'Block';
+    }
+    menu.querySelectorAll('[data-mode]')
+      .forEach(el => {
+        const m = (el as HTMLElement).dataset.mode!;
+        if (m === 'unblock') {
+          (el as HTMLButtonElement).disabled = !blocked;
+          return;
+        }
+        const checked = (m === 'both' && blockRoot && blockSearch) || (m === 'root' && blockRoot && !blockSearch) || (m === 'search' && !blockRoot && blockSearch);
+        el.setAttribute('aria-checked', String(checked));
+      });
+  }
 
   function apply(blockRoot: boolean, blockSearch: boolean) {
-    // remove legacy if modifying
     state.legacy.delete(tag);
     if (!blockRoot && !blockSearch) {
       delete state.modes[tag];
+    } else if (blockRoot && blockSearch) {
+      delete state.modes[tag];
+      state.legacy.add(tag);
     } else {
       state.modes[tag] = { root: blockRoot, search: blockSearch };
     }
+    if (!(blockRoot && blockSearch)) state.legacy.delete(tag);
     recomputeSets(state);
     saveModes(state.modes);
     saveLegacy(state.legacy);
-    // update UI bits inline (avoid full rerender of table chunk)
-    const blocked = blockRoot || blockSearch;
-    toggleBtn.textContent = blocked ? 'Unblock' : 'Block';
-    toggleBtn.className = 'btn ' + (blocked ? 'btn-danger' : 'btn-outline');
-    toggleBtn.setAttribute('aria-pressed', String(blocked));
-    modesBtn.style.display = blocked ? '' : 'none';
-    let modeSuffix = '';
-    if (blocked) {
-      if (blockRoot && !blockSearch) modeSuffix = ' (R)';
-      else if (!blockRoot && blockSearch) modeSuffix = ' (S)';
-    }
-    suffixSpan.textContent = modeSuffix;
+    updateTrigger(blockRoot, blockSearch);
     renderBlocked();
   }
 
-  toggleBtn.addEventListener('click', e => {
+  function openMenu() {
+    menu.hidden = false;
+    trigger.setAttribute('aria-expanded', 'true');
+    // focus first selected item or first item
+    const selected = menu.querySelector('[aria-checked="true"]') as HTMLElement | null;
+    const focusTarget = selected || menu.querySelector('[role=menuitemradio]') as HTMLElement | null;
+    focusTarget?.focus();
+  }
+  function closeMenu(focusTrigger = false) {
+    if (menu.hidden) return;
+    menu.hidden = true;
+    trigger.setAttribute('aria-expanded', 'false');
+    if (focusTrigger) trigger.focus();
+  }
+
+  trigger.addEventListener('click', e => {
     e.stopPropagation();
-    const currentlyBlocked = state.rootSet.has(tag) || state.searchSet.has(tag);
-    if (currentlyBlocked) {
-      // unblock all
+    const blocked = state.rootSet.has(tag) || state.searchSet.has(tag);
+    if (!blocked) {
+      // first click blocks using remembered or default both
+      const remembered = lastModeMemory[tag];
+      if (remembered === 'root') { state.modes[tag] = { root: true, search: false }; state.legacy.delete(tag); }
+      else if (remembered === 'search') { state.modes[tag] = { root: false, search: true }; state.legacy.delete(tag); }
+      else if (remembered === 'both') { delete state.modes[tag]; state.legacy.add(tag); }
+      else { delete state.modes[tag]; state.legacy.add(tag); }
+      recomputeSets(state); saveModes(state.modes); saveLegacy(state.legacy);
+      updateTrigger(state.rootSet.has(tag), state.searchSet.has(tag));
+      return; // do not open menu on initial block
+    }
+    // toggle menu
+    if (menu.hidden) openMenu(); else closeMenu();
+  });
+
+  menu.addEventListener('click', ev => {
+    const btn = (ev.target as HTMLElement).closest('button[data-mode]') as HTMLButtonElement | null;
+    if (!btn) return;
+    const mode = btn.dataset.mode!;
+    if (mode === 'unblock') {
+      // remember last mode
+      const wasRoot = state.rootSet.has(tag);
+      const wasSearch = state.searchSet.has(tag);
+      if (wasRoot && wasSearch) lastModeMemory[tag] = 'both';
+      else if (wasRoot && !wasSearch) lastModeMemory[tag] = 'root';
+      else if (!wasRoot && wasSearch) lastModeMemory[tag] = 'search';
       delete state.modes[tag];
       state.legacy.delete(tag);
-      recomputeSets(state);
-      saveModes(state.modes); saveLegacy(state.legacy);
-      toggleBtn.textContent = 'Block';
-      toggleBtn.className = 'btn btn-outline';
-      toggleBtn.setAttribute('aria-pressed', 'false');
-      modesBtn.style.display = 'none';
-      suffixSpan.textContent = '';
-      renderBlocked();
-    } else {
-      // block both
-      delete state.modes[tag]; // ensure not duplicating legacy
-      state.legacy.add(tag); // treat as both (legacy semantics)
-      recomputeSets(state);
-      saveLegacy(state.legacy); saveModes(state.modes);
-      toggleBtn.textContent = 'Unblock';
-      toggleBtn.className = 'btn btn-danger';
-      toggleBtn.setAttribute('aria-pressed', 'true');
-      modesBtn.style.display = '';
-      suffixSpan.textContent = '';
-      renderBlocked();
+      recomputeSets(state); saveModes(state.modes); saveLegacy(state.legacy);
+      apply(false,false);
+      closeMenu(true);
+      return;
     }
+    if (mode === 'both') apply(true,true);
+    else if (mode === 'root') apply(true,false);
+    else if (mode === 'search') apply(false,true);
+    closeMenu(true);
   });
 
-  function openPop() {
-    if (pop.style.display === 'block') return;
-    // sync radios with current state
-    const root = state.rootSet.has(tag);
-    const search = state.searchSet.has(tag);
-    (form.querySelector(`input[value="both"]`) as HTMLInputElement).checked = root && search;
-    (form.querySelector(`input[value="root"]`) as HTMLInputElement).checked = root && !search;
-    (form.querySelector(`input[value="search"]`) as HTMLInputElement).checked = !root && search;
-    pop.style.display = 'block';
-    modesBtn.setAttribute('aria-expanded', 'true');
-    const firstRadio = form.querySelector('input[type=radio]:checked') as HTMLInputElement || form.querySelector('input[type=radio]') as HTMLInputElement;
-    firstRadio?.focus();
-    document.addEventListener('mousedown', outsideHandler);
-    document.addEventListener('keydown', escHandler);
-  }
-  function closePop() {
-    if (pop.style.display === 'none') return;
-    pop.style.display = 'none';
-    modesBtn.setAttribute('aria-expanded', 'false');
-    document.removeEventListener('mousedown', outsideHandler);
-    document.removeEventListener('keydown', escHandler);
-    modesBtn.focus();
-  }
-  function outsideHandler(ev: MouseEvent) {
-    if (!pop.contains(ev.target as Node) && ev.target !== modesBtn) closePop();
-  }
-  function escHandler(ev: KeyboardEvent) { if (ev.key === 'Escape') { closePop(); } }
-
-  modesBtn.addEventListener('click', e => { e.stopPropagation(); if (pop.style.display === 'block') closePop(); else openPop(); });
-  closeBtn.addEventListener('click', e => { e.stopPropagation(); closePop(); });
-
-  form.addEventListener('change', () => {
-    const val = (form.querySelector('input[type=radio]:checked') as HTMLInputElement)?.value;
-    if (val === 'both') apply(true, true);
-    else if (val === 'root') apply(true, false);
-    else if (val === 'search') apply(false, true);
+  tr.addEventListener('keydown', ev => {
+    if (ev.key === 'Escape') { closeMenu(true); }
   });
+  trigger.addEventListener('keydown', ev => {
+    if (ev.key === 'ArrowDown' && menu.hidden) { ev.preventDefault(); openMenu(); }
+  });
+  menu.addEventListener('keydown', ev => {
+    const focusables = Array.from(menu.querySelectorAll('button.mode-item:not([disabled])')) as HTMLButtonElement[];
+    const idx = focusables.indexOf(document.activeElement as HTMLButtonElement);
+    if (ev.key === 'ArrowDown') { ev.preventDefault(); focusables[(idx+1)%focusables.length].focus(); }
+    else if (ev.key === 'ArrowUp') { ev.preventDefault(); focusables[(idx-1+focusables.length)%focusables.length].focus(); }
+    else if (ev.key === 'Home') { ev.preventDefault(); focusables[0].focus(); }
+    else if (ev.key === 'End') { ev.preventDefault(); focusables[focusables.length-1].focus(); }
+    else if (ev.key === 'Escape') { ev.preventDefault(); closeMenu(true); }
+    else if (ev.key === 'Tab') { closeMenu(); }
+    else if (ev.key === 'Enter' || ev.key === ' ') { (document.activeElement as HTMLButtonElement).click(); }
+  });
+
+  updateTrigger(state.rootSet.has(tag), state.searchSet.has(tag));
 }
 
+
 function updateRowsBlockedState() {
-  resultsDiv.querySelectorAll('tr').forEach(tr => {
-    const tag = tr.getAttribute('data-tag')!.toLowerCase();
-    const rootCb = tr.querySelector('input[data-mode=root]') as HTMLInputElement | null;
-    const searchCb = tr.querySelector('input[data-mode=search]') as HTMLInputElement | null;
-    const clearBtn = tr.querySelector('button[data-action=clear]') as HTMLButtonElement | null;
-    if (rootCb) rootCb.checked = state.rootSet.has(tag);
-    if (searchCb) searchCb.checked = state.searchSet.has(tag);
-    if (clearBtn) clearBtn.style.visibility = (state.rootSet.has(tag) || state.searchSet.has(tag)) ? 'visible' : 'hidden';
-  });
+  // rows already reflect state via existing handlers; no incremental sync needed currently
 }
 
 function searchBangs(term: string): Bang[] {
@@ -333,8 +317,7 @@ addForm.addEventListener('submit', async e => {
     setTimeout(() => bangInput.setCustomValidity(''), 1500);
     return;
   }
-  // Add as both root + search blocked (maintain legacy semantics for manual add)
-  delete state.modes[tag]; // ensure legacy style not duplicated
+  delete state.modes[tag];
   state.legacy.add(tag);
   recomputeSets(state);
   saveLegacy(state.legacy);
@@ -344,12 +327,10 @@ addForm.addEventListener('submit', async e => {
   updateRowsBlockedState();
 });
 
-// Retain interaction-based fallback (if auto-load was delayed for any reason)
 ['focus','input','keydown','click'].forEach(ev => {
   filterInput.addEventListener(ev, async () => { if (!allBangs) { await ensureLoaded(); } });
 });
 
-// Debounced filter input matching search page behavior
 let filterDebounce: ReturnType<typeof setTimeout>;
 filterInput.addEventListener('input', () => {
   clearTimeout(filterDebounce);
@@ -358,7 +339,6 @@ filterInput.addEventListener('input', () => {
 resultsDiv.addEventListener('scroll', maybeLoadMoreOnScroll);
 
 renderBlocked();
-// Auto-load bangs shortly after page load (preferred UX)
 (function scheduleAutoLoad(){
   const start = () => { if (!allBangs) ensureLoaded(); };
   if ('requestIdleCallback' in window) {

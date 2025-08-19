@@ -99,9 +99,40 @@ function noSearchDefaultPageRender() {
     });
 }
 
-interface RedirectResult { url: string | null; blocked?: { tag: string; url: string | null; reason: string }; }
+interface RedirectResult { url: string | null; blocked?: { tag: string; url: string | null; reason: string; mode: 'root' | 'search' }; }
 
-function loadBlockedBangTags(): Set<string> { try { const raw = localStorage.getItem('blocked-bangs'); if (!raw) return new Set(); const arr = JSON.parse(raw); return new Set(Array.isArray(arr) ? arr.map((s: any) => String(s).toLowerCase()) : []); } catch { return new Set(); } }
+// Legacy single list key
+function loadLegacyBlocked(): Set<string> { try { const raw = localStorage.getItem('blocked-bangs'); if (!raw) return new Set(); const arr = JSON.parse(raw); return new Set(Array.isArray(arr) ? arr.map((s: any) => String(s).toLowerCase()) : []); } catch { return new Set(); } }
+
+interface BlockModes { [tag: string]: { root?: boolean; search?: boolean }; }
+const MODES_KEY = 'blocked-bangs-modes';
+function loadBlockModes(): BlockModes {
+    try {
+        const raw = localStorage.getItem(MODES_KEY);
+        if (!raw) return {};
+        const obj = JSON.parse(raw);
+        if (obj && typeof obj === 'object' && !Array.isArray(obj)) return obj as BlockModes;
+        return {};
+    } catch { return {}; }
+}
+
+function computeBlockSets() {
+    const legacy = loadLegacyBlocked();
+    const modes = loadBlockModes();
+    const root = new Set<string>();
+    const search = new Set<string>();
+    // Modes first
+    for (const k in modes) {
+        const low = k.toLowerCase();
+        if (modes[k].root) root.add(low);
+        if (modes[k].search) search.add(low);
+    }
+    // Legacy entries imply both if not already specified in modes
+    legacy.forEach(tag => {
+        if (!(tag in modes)) { root.add(tag); search.add(tag); }
+    });
+    return { root, search };
+}
 
 function getBangredirectUrl(): RedirectResult { // returns redirect info or blocked reason
     const url = new URL(window.location.href);
@@ -136,39 +167,40 @@ function getBangredirectUrl(): RedirectResult { // returns redirect info or bloc
         .replace(/\s*\S+!/, "") // Remove suffix bang
         .trim();
 
-    // Load blocked set once
-    const blocked = loadBlockedBangTags();
+    // Load block sets once
+    const { root: blockedRoot, search: blockedSearch } = computeBlockSets();
 
     // Detect single bang only (no trailing search terms after removing it)
     const isSingleBangOnly = !cleanQuery && (prefixMatch || suffixMatch);
     const override = url.searchParams.get('override') === '1';
 
-    if (isSingleBangOnly && selectedBang && blocked.has(selectedBang.t.toLowerCase()) && !override) {
-        return { url: null, blocked: { tag: selectedBang.t, url: null, reason: 'Blocked by user' } };
-    }
-
-    // If the query is empty after removing bang, redirect to home page of selected engine
-    if (cleanQuery === "") {
+    if (isSingleBangOnly && selectedBang) {
+        const tag = selectedBang.t.toLowerCase();
+        if (blockedRoot.has(tag) && !override) {
+            return { url: null, blocked: { tag: selectedBang.t, url: null, reason: 'Root redirect blocked', mode: 'root' } };
+        }
+        // No search terms -> root redirect allowed
         return { url: selectedBang ? `https://${selectedBang.d}` : null };
     }
 
-    // Format of the url is:
-    // https://www.google.com/search?q={{{s}}}
+    // If we reach here we have search terms (or no bang found, fallback to default bang search)
     const searchUrl = selectedBang?.u.replace(
         "{{{s}}}",
-        // Replace %2F with / to fix formats like "!ghr+mandavkarpranjal/whataduck"
         encodeURIComponent(cleanQuery).replace(/%2F/g, "/")
     );
     if (!searchUrl) return { url: null };
 
-    if (selectedBang && blocked.has(selectedBang.t.toLowerCase()) && !override) {
-        return { url: null, blocked: { tag: selectedBang.t, url: searchUrl, reason: 'Blocked by user' } };
+    if (selectedBang) {
+        const tag = selectedBang.t.toLowerCase();
+        if (blockedSearch.has(tag) && !override) {
+            return { url: null, blocked: { tag: selectedBang.t, url: searchUrl, reason: 'Search redirect blocked', mode: 'search' } };
+        }
     }
 
     return { url: searchUrl };
 }
 
-function showBlockedScreen(block: { tag: string; url: string | null; reason: string }) {
+function showBlockedScreen(block: { tag: string; url: string | null; reason: string; mode: 'root' | 'search' }) {
     const app = document.querySelector<HTMLDivElement>('#app');
     if (!app) return;
 
@@ -192,7 +224,7 @@ function showBlockedScreen(block: { tag: string; url: string | null; reason: str
         <div class="blocked-card" role="alert" aria-labelledby="blocked-title" aria-describedby="blocked-desc">
           <div class="blocked-icon" aria-hidden="true">⛔</div>
           <h1 id="blocked-title" class="blocked-title">This bang is blocked</h1>
-          <p id="blocked-desc" class="blocked-desc">Bang <code class="blocked-code">!${block.tag}</code> was prevented from redirecting.</p>
+          <p id="blocked-desc" class="blocked-desc">Bang <code class="blocked-code">!${block.tag}</code> ${block.mode === 'root' ? 'root redirect' : 'search redirect'} was prevented.</p>
           <div class="blocked-actions">
             <button id="override-btn" class="blocked-btn blocked-btn-primary" data-target="${overrideTarget ?? ''}" ${overrideTarget ? '' : 'disabled aria-disabled="true"'}>Override once</button>
             <a href="/blocklist" class="blocked-btn blocked-btn-secondary" id="manage-blocklist-btn">Manage blocklist</a>
