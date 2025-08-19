@@ -161,8 +161,8 @@ function rowHtml(b: Bang): string { /* updated for popover modes */
     <td style="width:20%;"><span class="tag">!${b.t}</span></td>
     <td>${b.s}</td>
     <td style="width:40%; text-align:right; position:relative;" class="actions">
-      <button class="small" data-action="toggle-main" aria-pressed="${blocked}" title="${blocked ? 'Unblock' : 'Block'} this bang">${blocked ? 'Unblock' : 'Block'}</button>
-      <button class="small modes-trigger" data-action="modes" style="margin-left:4px;${blocked ? '' : 'display:none;'}" aria-haspopup="true" aria-expanded="false" title="Adjust block modes">⋯</button>
+      <button class="btn ${blocked ? 'btn-danger' : 'btn-outline'}" data-action="toggle-main" aria-pressed="${blocked}" title="${blocked ? 'Unblock' : 'Block'} this bang">${blocked ? 'Unblock' : 'Block'}</button>
+      <button class="btn btn-condensed modes-trigger" data-action="modes" style="margin-left:4px;${blocked ? '' : 'display:none;'}" aria-haspopup="true" aria-expanded="false" title="Adjust block modes">⋯</button>
       <div class="modes-popover" role="dialog" aria-label="Block modes" style="display:none;">
         <form data-action="modes-form">
           <label><input type="radio" name="mode-${b.t}" value="both" ${(root&&search)?'checked':''}/> Both</label>
@@ -201,6 +201,7 @@ function attachRowHandlers(tr: HTMLTableRowElement) { /* updated handlers for po
     // update UI bits inline (avoid full rerender of table chunk)
     const blocked = blockRoot || blockSearch;
     toggleBtn.textContent = blocked ? 'Unblock' : 'Block';
+    toggleBtn.className = 'btn ' + (blocked ? 'btn-danger' : 'btn-outline');
     toggleBtn.setAttribute('aria-pressed', String(blocked));
     modesBtn.style.display = blocked ? '' : 'none';
     let modeSuffix = '';
@@ -222,6 +223,7 @@ function attachRowHandlers(tr: HTMLTableRowElement) { /* updated handlers for po
       recomputeSets(state);
       saveModes(state.modes); saveLegacy(state.legacy);
       toggleBtn.textContent = 'Block';
+      toggleBtn.className = 'btn btn-outline';
       toggleBtn.setAttribute('aria-pressed', 'false');
       modesBtn.style.display = 'none';
       suffixSpan.textContent = '';
@@ -233,6 +235,7 @@ function attachRowHandlers(tr: HTMLTableRowElement) { /* updated handlers for po
       recomputeSets(state);
       saveLegacy(state.legacy); saveModes(state.modes);
       toggleBtn.textContent = 'Unblock';
+      toggleBtn.className = 'btn btn-danger';
       toggleBtn.setAttribute('aria-pressed', 'true');
       modesBtn.style.display = '';
       suffixSpan.textContent = '';
