@@ -85,6 +85,31 @@ function modeSuffix(mode: string): string {
   return '';
 }
 
+// aria-live region for status updates
+let live = document.getElementById('live-region');
+if(!live){
+  live = document.createElement('div');
+  live.id='live-region';
+  live.setAttribute('aria-live','polite');
+  live.setAttribute('aria-atomic','true');
+  live.style.position='absolute';
+  live.style.width='1px';
+  live.style.height='1px';
+  live.style.margin='-1px';
+  live.style.border='0';
+  live.style.padding='0';
+  live.style.clip='rect(0 0 0 0)';
+  live.style.overflow='hidden';
+  document.body.appendChild(live);
+}
+function announce(msg:string){ if(live) live.textContent = msg; }
+
+function announcedSetMode(tag:string, mode: 'none'|'both'|'root'|'search'){
+  setMode(tag, mode);
+  const human = mode==='none'? 'unblocked' : (mode==='both'?'blocked for root and search': mode==='root'?'blocked for root only':'blocked for search only');
+  announce(`Bang !${tag} ${human}.`);
+}
+
 function renderBlocked(){
   const entries: { tag:string; mode:'both'|'root'|'search' }[] = [];
   // legacy implies both
@@ -112,10 +137,10 @@ function renderBlocked(){
     btn.addEventListener('click', ev => {
       ev.stopPropagation();
       const t = (ev.currentTarget as HTMLElement).getAttribute('data-remove')!;
-      setMode(t,'none');
-      renderBlocked();
-      const row = resultsDiv.querySelector(`tr[data-tag="${t}"]`);
-      if (row) updateRow(row as HTMLTableRowElement);
+       announcedSetMode(t,'none');
+       renderBlocked();
+       const row = resultsDiv.querySelector(`tr[data-tag="${t}"]`);
+       if (row) updateRow(row as HTMLTableRowElement);
     });
   });
 }
@@ -155,7 +180,7 @@ function attachRow(tr: HTMLTableRowElement){
     const tag = tr.getAttribute('data-tag')!;
     const currentMode = getMode(tag);
     const next = cycleMode(currentMode);
-    setMode(tag, next);
+    announcedSetMode(tag, next);
     updateRow(tr);
     renderBlocked();
   });
@@ -174,7 +199,7 @@ addForm.addEventListener('submit', async e => {
   if(!tag) return;
   await ensureLoaded();
   if(!allBangs!.some(b=>b.t.toLowerCase()===tag)) { bangInput.setCustomValidity('Unknown bang tag'); bangInput.reportValidity(); setTimeout(()=>bangInput.setCustomValidity(''),1500); return; }
-  setMode(tag,'both');
+  announcedSetMode(tag,'both');
   bangInput.value='';
   renderBlocked();
   const row = resultsDiv.querySelector(`tr[data-tag="${tag}"]`); if (row) updateRow(row as HTMLTableRowElement);
@@ -184,6 +209,27 @@ filterInput.addEventListener('input', applyFilter);
 ['focus','keydown','click'].forEach(ev => { filterInput.addEventListener(ev, async ()=>{ if(!allBangs) await ensureLoaded(); }); });
 
 renderBlocked();
+
+// Legend popup logic (deferred until after initial render)
+const legendBtn = document.getElementById('legend-btn');
+const legendPop = document.getElementById('legend-pop');
+const legendClose = document.getElementById('legend-close');
+if(legendBtn && legendPop){
+  const hide = () => { legendPop!.style.display='none'; legendBtn!.setAttribute('aria-expanded','false'); };
+  const show = () => { legendPop!.style.display='block'; legendBtn!.setAttribute('aria-expanded','true'); position(); };
+  const toggle = () => { legendPop!.style.display==='none'?show():hide(); };
+  const position = () => {
+    const rect = legendBtn!.getBoundingClientRect();
+    legendPop!.style.top = (window.scrollY + rect.bottom + 4) + 'px';
+    legendPop!.style.left = (window.scrollX + rect.left) + 'px';
+  };
+  legendBtn.addEventListener('click', e => { e.stopPropagation(); toggle(); });
+  legendClose?.addEventListener('click', () => hide());
+  document.addEventListener('click', (e) => { if(!legendPop!.contains(e.target as Node) && e.target!==legendBtn) hide(); });
+  window.addEventListener('resize', () => { if(legendPop!.style.display!=='none') position(); });
+  window.addEventListener('scroll', () => { if(legendPop!.style.display!=='none') position(); });
+}
+
 (function scheduleAutoLoad(){
   const start = () => { if(!allBangs) ensureLoaded(); };
   if('requestIdleCallback' in window){ (window as any).requestIdleCallback(start,{ timeout:1500 }); } else { setTimeout(start,150); }

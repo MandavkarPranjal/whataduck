@@ -70,20 +70,25 @@
     </form>
     <div class="list-section">
        <!-- Blocked summary removed per new design -->
-      <div id="blocked-chips" class="chips" style="display:none;"></div>
+      <div id="blocked-chips" class="chips"></div>
       <div id="blocked-empty" class="empty" style="display:none;"></div>
     </div>
-    <div class="search-wrap">
+     <div class="search-wrap">
       <input id="filter-input" type="text" placeholder="Loading bang list…" />
-      <div class="hint">Click a row to toggle block. Total: <span id="total-count">—</span></div>
+      <div class="hint">Click a row to toggle block. Total: <span id="total-count">—</span>
+        <button id="legend-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="legend-pop" style="margin-left:8px;font-size:11px;padding:2px 6px;border:1px solid #ccc;border-radius:6px;background:#f7f7f7;cursor:pointer;">Legend</button>
+      </div>
     </div>
      <div class="results" id="results"></div>
-     <div style="margin-top:12px;font-size:12px;color:#666;display:flex;flex-wrap:wrap;gap:12px;">
-       <span><strong>Mode legend:</strong></span>
-       <span><span class="tag" style="background:#ffe7e7;">Both</span> blocked for root + search</span>
-       <span><span class="tag" style="background:#fff3d1;">Root</span> blocked only for root redirects</span>
-       <span><span class="tag" style="background:#e3f3ff;">Search</span> blocked only when used in query</span>
-       <span><span class="tag" style="background:#eee;">Block</span> click to start blocking</span>
+     <div id="legend-pop" role="dialog" aria-modal="false" aria-label="Mode legend" style="display:none;position:absolute;max-width:320px;margin-top:8px;padding:12px 14px;border:1px solid #ddd;background:#fff;border-radius:10px;font-size:12px;line-height:1.4;box-shadow:0 6px 28px -8px rgba(0,0,0,.25);">
+       <div style="font-weight:600;margin-bottom:6px;">Mode legend</div>
+       <div style="display:flex;flex-direction:column;gap:4px;">
+         <div><span style="display:inline-block;width:14px;height:14px;background:#ffe1e1;border-radius:3px;border:1px solid #f4b4b4;margin-right:6px;vertical-align:middle;"></span><strong>Both</strong> – blocked for root + search</div>
+         <div><span style="display:inline-block;width:14px;height:14px;background:#ffefc2;border-radius:3px;border:1px solid #e9d088;margin-right:6px;vertical-align:middle;"></span><strong>Root</strong> – blocked only for root redirects</div>
+         <div><span style="display:inline-block;width:14px;height:14px;background:#d9edff;border-radius:3px;border:1px solid #9cc8ea;margin-right:6px;vertical-align:middle;"></span><strong>Search</strong> – blocked only when used in query</div>
+         <div><span style="display:inline-block;width:14px;height:14px;background:transparent;border:1px solid #ccc;border-radius:3px;margin-right:6px;vertical-align:middle;"></span><strong>Block</strong> – click to start blocking</div>
+       </div>
+       <button type="button" id="legend-close" style="margin-top:10px;font-size:11px;padding:4px 8px;border:1px solid #ccc;border-radius:6px;background:#f7f7f7;cursor:pointer;">Close</button>
      </div>
   </div>
   <script type="module" src="/src/blocklist.ts"></script>

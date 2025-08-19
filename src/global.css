@@ -189,17 +189,17 @@ textarea {
 .hidden { display:none !important; }
 .results tr { cursor:pointer; }
  .results tr.is-blocked { background:#fff8f8; }
- .results tr.row-mode-both { background:#fff2f2; }
- .results tr.row-mode-root { background:#fff9e6; }
- .results tr.row-mode-search { background:#f1f8ff; }
- .results tr.row-mode-none { background:transparent; }
+ .results tr.row-mode-both { background:#ffe1e1; }
+  .results tr.row-mode-root { background:#ffefc2; }
+  .results tr.row-mode-search { background:#d9edff; }
+  .results tr.row-mode-none { background:transparent; }
 .results tr.is-blocked:hover { background:#ffecec; }
 @media (prefers-color-scheme: dark) {
-   .results tr.is-blocked { background:#2a1d1d; }
-   .results tr.row-mode-both { background:#311d1d; }
-   .results tr.row-mode-root { background:#2e2715; }
-   .results tr.row-mode-search { background:#162432; }
-   .results tr.row-mode-none { background:transparent; }
+    .results tr.is-blocked { background:#3a1f1f; }
+   .results tr.row-mode-both { background:#4d1515; }
+    .results tr.row-mode-root { background:#46330a; }
+    .results tr.row-mode-search { background:#0d2e47; }
+    .results tr.row-mode-none { background:transparent; }
   .results tr.is-blocked:hover { background:#392626; }
 }
 
