@@ -2,39 +2,22 @@ import './global.css';
 import Fuse from 'fuse.js';
 
 interface Bang { t: string; s: string; d: string; r: number; u: string; c?: string; sc?: string; }
+interface ModesMap { [tag: string]: { root?: boolean; search?: boolean }; }
 
-const LEGACY_KEY = 'blocked-bangs';
-const MODES_KEY = 'blocked-bangs-modes'; // will be read once then ignored
+const LEGACY_KEY = 'blocked-bangs'; // represents Both (root+search)
+const MODES_KEY = 'blocked-bangs-modes'; // partial modes for tags not in legacy
 
 function loadLegacy(): Set<string> {
-  try {
-    const raw = localStorage.getItem(LEGACY_KEY);
-    if (!raw) return new Set();
-    const arr = JSON.parse(raw);
-    if (Array.isArray(arr)) return new Set(arr.map(s => String(s).toLowerCase()));
-    return new Set();
-  } catch { return new Set(); }
-}
-function saveLegacy(set: Set<string>) { localStorage.setItem(LEGACY_KEY, JSON.stringify([...set])); }
+  try { const raw = localStorage.getItem(LEGACY_KEY); if(!raw) return new Set(); const arr = JSON.parse(raw); if(Array.isArray(arr)) return new Set(arr.map(s=>String(s).toLowerCase())); } catch{}; return new Set(); }
+function saveLegacy(set: Set<string>){ localStorage.setItem(LEGACY_KEY, JSON.stringify([...set])); }
+function loadModes(): ModesMap { try { const raw = localStorage.getItem(MODES_KEY); if(!raw) return {}; const obj = JSON.parse(raw); if(obj && typeof obj==='object' && !Array.isArray(obj)) return obj; } catch{}; return {}; }
+function saveModes(m: ModesMap){ localStorage.setItem(MODES_KEY, JSON.stringify(m)); }
 
-// One-time merge of existing per-mode structure (we treat any partial block as full block for simplicity)
-function mergeModesIntoLegacy(legacy: Set<string>) {
-  try {
-    const raw = localStorage.getItem(MODES_KEY);
-    if (!raw) return;
-    const obj = JSON.parse(raw);
-    if (obj && typeof obj === 'object') {
-      for (const k in obj) {
-        legacy.add(k.toLowerCase());
-      }
-      saveLegacy(legacy);
-    }
-  } catch { /* ignore */ }
-}
-
+// State
 const legacy = loadLegacy();
-mergeModesIntoLegacy(legacy); // idempotent
+const modes: ModesMap = loadModes();
 
+// DOM refs
 const bangInput = document.getElementById('bang-input') as HTMLInputElement;
 const addForm = document.getElementById('add-form') as HTMLFormElement;
 const blockedChips = document.getElementById('blocked-chips')!;
@@ -50,118 +33,158 @@ let loading = false;
 
 function ensureLoaded(): Promise<void> {
   if (allBangs) return Promise.resolve();
-  if (loading) return new Promise(res => { const iv = setInterval(()=>{ if(!loading){ clearInterval(iv); res(); } }, 30); });
+  if (loading) return new Promise(res=>{ const iv=setInterval(()=>{ if(!loading){ clearInterval(iv); res(); } },30); });
   loading = true;
   resultsDiv.innerHTML = '<div style="padding:16px; text-align:center; font-size:14px;">Loading bang list…</div>';
   return import('./bang').then(mod => {
-    allBangs = mod.bangs.map(b => ({ ...b, c: (b as any).c ?? '', sc: (b as any).sc ?? '' }));
+    allBangs = mod.bangs.map(b=>({...b,c:(b as any).c??'',sc:(b as any).sc??''}));
     fuse = new Fuse(allBangs, { keys:[{name:'t',weight:0.7},{name:'s',weight:0.3}], threshold:0.4 });
     totalCountSpan.textContent = String(allBangs.length);
     filterInput.disabled = false;
     filterInput.placeholder = 'Search bangs to block';
     current = allBangs.slice();
     renderTable();
-  }).finally(()=>{ loading = false; });
+  }).finally(()=>{ loading=false; });
 }
 
-function renderBlocked() {
-  if (legacy.size === 0) {
-    blockedChips.innerHTML = '';
-    blockedEmpty.style.display = 'block';
-    blockedEmpty.textContent = 'No blocked bangs yet';
+// Helpers for mode
+function getMode(tag: string): 'none'|'both'|'root'|'search' {
+  tag = tag.toLowerCase();
+  if (legacy.has(tag)) return 'both';
+  const m = modes[tag];
+  if (m?.root && m?.search) return 'both'; // collapse to legacy conceptually
+  if (m?.root) return 'root';
+  if (m?.search) return 'search';
+  return 'none';
+}
+function setMode(tag: string, mode: 'none'|'both'|'root'|'search') {
+  tag = tag.toLowerCase();
+  if (mode === 'both') { legacy.add(tag); delete modes[tag]; }
+  else if (mode === 'none') { legacy.delete(tag); delete modes[tag]; }
+  else { legacy.delete(tag); modes[tag] = { root: mode==='root', search: mode==='search' }; }
+  saveLegacy(legacy); saveModes(modes);
+}
+function cycleMode(current: 'none'|'both'|'root'|'search'): 'both'|'root'|'search'|'none' {
+  if (current==='none') return 'both';
+  if (current==='both') return 'root';
+  if (current==='root') return 'search';
+  return 'none';
+}
+
+function modeLabel(mode: string): string {
+  if (mode==='none') return 'Block';
+  if (mode==='both') return 'Both';
+  if (mode==='root') return 'Root';
+  if (mode==='search') return 'Search';
+  return 'Block';
+}
+function modeSuffix(mode: string): string {
+  if (mode==='both') return ' (Both)';
+  if (mode==='root') return ' (Root)';
+  if (mode==='search') return ' (Search)';
+  return '';
+}
+
+function renderBlocked(){
+  const entries: { tag:string; mode:'both'|'root'|'search' }[] = [];
+  // legacy implies both
+  legacy.forEach(t => entries.push({ tag:t, mode:'both'}));
+  for (const k in modes) {
+    const m = modes[k];
+    if (legacy.has(k)) continue; // legacy wins
+    if (m.root && m.search) { // normalize to both -> move into legacy for cleanliness
+      legacy.add(k); delete modes[k]; saveLegacy(legacy); saveModes(modes); entries.push({ tag:k, mode:'both'}); continue;
+    }
+    if (m.root) entries.push({ tag:k, mode:'root'});
+    else if (m.search) entries.push({ tag:k, mode:'search'});
+  }
+  if (entries.length===0){
+    blockedChips.innerHTML='';
+    blockedEmpty.style.display='block';
+    blockedEmpty.textContent='No blocked bangs yet';
     return;
   }
-  blockedEmpty.style.display = 'none';
-  blockedChips.innerHTML = [...legacy].sort().map(tag => (
-    `<span class="chip" data-chip="${tag}"><code>!${tag}</code><button aria-label="Unblock ${tag}" data-remove="${tag}">×</button></span>`
-  )).join('');
+  blockedEmpty.style.display='none';
+  blockedChips.innerHTML = entries.sort((a,b)=>a.tag.localeCompare(b.tag)).map(e =>
+    `<span class="chip" data-chip="${e.tag}"><code>!${e.tag}</code><span style="font-size:11px;color:#666;">${modeSuffix(e.mode).trim()}</span><button aria-label="Unblock ${e.tag}" data-remove="${e.tag}">×</button></span>`
+  ).join('');
   blockedChips.querySelectorAll('button[data-remove]').forEach(btn => {
-    btn.addEventListener('click', e => {
-      e.stopPropagation();
-      const t = (e.currentTarget as HTMLElement).getAttribute('data-remove')!;
-      legacy.delete(t);
-      saveLegacy(legacy);
+    btn.addEventListener('click', ev => {
+      ev.stopPropagation();
+      const t = (ev.currentTarget as HTMLElement).getAttribute('data-remove')!;
+      setMode(t,'none');
       renderBlocked();
-      // update table row state if visible
       const row = resultsDiv.querySelector(`tr[data-tag="${t}"]`);
-      if (row) updateRowBlocked(row as HTMLTableRowElement);
+      if (row) updateRow(row as HTMLTableRowElement);
     });
   });
 }
 
 function rowHtml(b: Bang): string {
-  const blocked = legacy.has(b.t.toLowerCase());
-  return `<tr data-tag="${b.t}" class="${blocked?'is-blocked':''}">
+  const mode = getMode(b.t);
+  const label = modeLabel(mode);
+  return `<tr data-tag="${b.t}" class="row-mode-${mode}">
     <td style="width:20%;"><span class="tag">!${b.t}</span></td>
     <td>${b.s}</td>
-    <td style="width:40%; text-align:right; font-size:12px; color:${blocked?'#c62828':'#666'};">${blocked?'Blocked':'Click to block'}</td>
+    <td style="width:40%; text-align:right;">
+      <button class="btn btn-outline mode-cycle" data-action="cycle" aria-pressed="${mode!=='none'}" data-mode="${mode}">${label}</button>
+    </td>
   </tr>`;
 }
 
-function renderTable() {
-  if (!allBangs) return;
-  resultsDiv.innerHTML = '<table style="width:100%; border-collapse:collapse; font-size:14px;"><tbody></tbody></table>';
+function renderTable(){
+  if(!allBangs) return;
+  resultsDiv.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:14px;"><tbody></tbody></table>';
   const tbody = resultsDiv.querySelector('tbody')!;
-  tbody.innerHTML = current.map(b => rowHtml(b)).join('');
+  tbody.innerHTML = current.map(b=>rowHtml(b)).join('');
   tbody.querySelectorAll('tr').forEach(tr => attachRow(tr as HTMLTableRowElement));
 }
 
-function updateRowBlocked(tr: HTMLTableRowElement) {
+function updateRow(tr: HTMLTableRowElement){
   const tag = tr.getAttribute('data-tag')!;
-  const blocked = legacy.has(tag.toLowerCase());
-  tr.classList.toggle('is-blocked', blocked);
-  const statusCell = tr.children[2] as HTMLElement;
-  statusCell.style.color = blocked ? '#c62828' : '#666';
-  statusCell.textContent = blocked ? 'Blocked' : 'Click to block';
+  const mode = getMode(tag);
+  const btn = tr.querySelector('button.mode-cycle') as HTMLButtonElement | null;
+  if (btn){ btn.textContent = modeLabel(mode); btn.dataset.mode = mode; btn.setAttribute('aria-pressed', String(mode!=='none')); }
+  tr.className = `row-mode-${mode}`;
 }
 
-function attachRow(tr: HTMLTableRowElement) {
-  tr.addEventListener('click', () => {
-    const tag = tr.getAttribute('data-tag')!.toLowerCase();
-    if (legacy.has(tag)) legacy.delete(tag); else legacy.add(tag);
-    saveLegacy(legacy);
-    updateRowBlocked(tr);
+function attachRow(tr: HTMLTableRowElement){
+  const btn = tr.querySelector('button.mode-cycle') as HTMLButtonElement;
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const tag = tr.getAttribute('data-tag')!;
+    const currentMode = getMode(tag);
+    const next = cycleMode(currentMode);
+    setMode(tag, next);
+    updateRow(tr);
     renderBlocked();
   });
 }
 
-function applyFilter() {
-  if (!allBangs) return;
+function applyFilter(){
+  if(!allBangs) return;
   const term = filterInput.value.trim();
-  if (!term) current = allBangs.slice();
-  else current = fuse!.search(term).map(r => r.item);
+  current = term ? fuse!.search(term).map(r=>r.item) : allBangs.slice();
   renderTable();
 }
 
 addForm.addEventListener('submit', async e => {
   e.preventDefault();
-  const tagRaw = bangInput.value.trim().replace(/^!/, '').toLowerCase();
-  if (!tagRaw) return;
+  const tag = bangInput.value.trim().replace(/^!/, '').toLowerCase();
+  if(!tag) return;
   await ensureLoaded();
-  if (!allBangs!.some(b => b.t.toLowerCase() === tagRaw)) {
-    bangInput.setCustomValidity('Unknown bang tag');
-    bangInput.reportValidity();
-    setTimeout(()=> bangInput.setCustomValidity(''), 1500);
-    return;
-  }
-  legacy.add(tagRaw);
-  saveLegacy(legacy);
+  if(!allBangs!.some(b=>b.t.toLowerCase()===tag)) { bangInput.setCustomValidity('Unknown bang tag'); bangInput.reportValidity(); setTimeout(()=>bangInput.setCustomValidity(''),1500); return; }
+  setMode(tag,'both');
   bangInput.value='';
   renderBlocked();
-  // Update visible row if present
-  const row = resultsDiv.querySelector(`tr[data-tag="${tagRaw}"]`);
-  if (row) updateRowBlocked(row as HTMLTableRowElement);
+  const row = resultsDiv.querySelector(`tr[data-tag="${tag}"]`); if (row) updateRow(row as HTMLTableRowElement);
 });
 
-filterInput.addEventListener('input', () => { applyFilter(); });
+filterInput.addEventListener('input', applyFilter);
 ['focus','keydown','click'].forEach(ev => { filterInput.addEventListener(ev, async ()=>{ if(!allBangs) await ensureLoaded(); }); });
 
 renderBlocked();
 (function scheduleAutoLoad(){
-  const start = () => { if (!allBangs) ensureLoaded(); };
-  if ('requestIdleCallback' in window) {
-    (window as any).requestIdleCallback(start, { timeout: 1500 });
-  } else {
-    setTimeout(start, 150);
-  }
+  const start = () => { if(!allBangs) ensureLoaded(); };
+  if('requestIdleCallback' in window){ (window as any).requestIdleCallback(start,{ timeout:1500 }); } else { setTimeout(start,150); }
 })();
