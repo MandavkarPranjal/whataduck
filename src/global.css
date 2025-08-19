@@ -197,16 +197,16 @@ textarea {
   .results tr.row-mode-none { background:transparent; }
 .results tr.is-blocked:hover { background:#392626; }
 
-.btn { --btn-bg:transparent;--btn-bd:#ccc;--btn-color:#222;--btn-bg-h:#f5f5f5;--btn-bd-h:#bbb;--btn-ring:#2684ff;display:inline-flex;align-items:center;justify-content:center;padding:6px 12px;font-size:12px;font-weight:500;border:1px solid var(--btn-bd);border-radius:6px;background:var(--btn-bg);color:var(--btn-color);line-height:1.1;transition:background .16s,border-color .16s,color .16s,box-shadow .16s; }
-.btn:hover { background:var(--btn-bg-h); }
+.btn { --btn-bg:transparent;--btn-bd:#3d3d3d;--btn-color:#ddd;--btn-bg-h:#1f1f1f;--btn-bd-h:#555;--btn-ring:#6b6b6b;display:inline-flex;align-items:center;justify-content:center;padding:6px 12px;font-size:12px;font-weight:500;border:1px solid var(--btn-bd);border-radius:4px;background:var(--btn-bg);color:var(--btn-color);line-height:1.1;transition:background .16s,border-color .16s,color .16s,box-shadow .16s; }
+.btn:hover { background:var(--btn-bg-h);border-color:var(--btn-bd-h); }
 .btn:focus-visible { outline:2px solid var(--btn-ring); outline-offset:2px; }
 .btn-outline { }
 .btn-danger { --btn-bg:#d92b2b;--btn-bd:#d92b2b;--btn-color:#fff;--btn-bg-h:#c41f1f; box-shadow:0 0 0 0 rgba(217,43,43,0); }
 .btn-danger:hover { box-shadow:0 2px 6px -2px rgba(217,43,43,.55); }
 .btn-danger:active { transform:translateY(1px); }
 .btn-danger-outline { --btn-bg:transparent;--btn-bd:#d92b2b;--btn-color:#d92b2b;--btn-bg-h:#ffe9e9; }
-.btn-condensed { padding:4px 8px;font-size:11px; }
-.btn-quiet { --btn-bg:transparent;--btn-bd:transparent;--btn-color:#555;--btn-bg-h:#f2f2f2; }
+.btn-condensed { padding:3px 7px;font-size:11px; }
+.btn-quiet { --btn-bg:transparent;--btn-bd:transparent;--btn-color:#888;--btn-bg-h:#1d1d1d; }
 
 .chip { display:inline-flex;align-items:center;gap:4px;background:#f3f3f3;border:1px solid #e1e1e1;padding:4px 8px;border-radius:999px;font-size:12px;margin:4px;position:relative; }
 .chip button { background:none;border:none;font-size:14px;line-height:1;color:#777;padding:0 2px 0 4px;cursor:pointer;border-radius:4px; }

@@ -16,13 +16,13 @@
     form { display:flex; gap:8px; margin-bottom:16px; }
     input[type=text]{ flex:1; padding:10px 14px; border:1px solid #3d3d3d; border-radius:8px; background:#191919; color:#eee; transition:border-color .15s, box-shadow .15s; }
     input[type=text]:focus{ outline:none; border-color:#777; background:#191919; box-shadow:0 0 0 2px rgba(255,255,255,.08); }
-    button.primary { background:#e4e4e4; color:#111; padding:10px 18px; border-radius:8px; font-weight:500; }
-    button.primary:hover { background:#fff; }
+    button.primary { background:#242424; color:#f2f2f2; padding:10px 18px; border-radius:8px; font-weight:500; border:1px solid #3a3a3a; }
+    button.primary:hover { background:#2d2d2d; border-color:#555; }
     .list-section { margin-top:8px; }
     .chips { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 4px; }
-    .chip { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; background:#262626; border-radius:999px; font-size:14px; }
-    .chip button { font-size:14px; line-height:1; padding:0 4px; color:#666; }
-    .chip button:hover{ color:#000; }
+    .chip { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; background:#1f1f1f; border:1px solid #333;border-radius:999px; font-size:13px; }
+    .chip button { font-size:13px; line-height:1; padding:0 4px; color:#888; border:1px solid transparent; border-radius:4px; }
+    .chip button:hover{ background:#262626;color:#eee;border-color:#444; }
     .empty { font-size:14px; color:#777; font-style:italic; }
     .search-wrap { margin:24px 0 12px; }
     .results { max-height:260px; overflow:auto; border:1px solid #2a2a2a; border-radius:12px; }
@@ -67,7 +67,7 @@
     <p class="subtitle">Add bang tags (without !). Requests using these will be stopped.</p>
     <form id="add-form">
       <input id="bang-input" type="text" placeholder="Enter bang tag e.g. cgpt" autocomplete="off" />
-      <button class="primary" type="submit">Add</button>
+      <button class="primary" type="submit" style="border-radius:4px;padding:8px 14px;font-size:13px;">Add</button>
     </form>
     <div class="list-section">
        <!-- Blocked summary removed per new design -->
@@ -77,19 +77,19 @@
      <div class="search-wrap">
       <input id="filter-input" type="text" placeholder="Loading bang list…" />
       <div class="hint">Click a row to toggle block. Total: <span id="total-count">—</span>
-        <button id="legend-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="legend-pop" style="margin-left:8px;font-size:11px;padding:2px 6px;border:1px solid #ccc;border-radius:6px;background:#f7f7f7;cursor:pointer;">Legend</button>
+        <button id="legend-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="legend-pop" class="btn btn-condensed" style="margin-left:8px;">Legend</button>
       </div>
     </div>
      <div class="results" id="results"></div>
-     <div id="legend-pop" role="dialog" aria-modal="false" aria-label="Mode legend" style="display:none;position:absolute;max-width:320px;margin-top:8px;padding:12px 14px;border:1px solid #ddd;background:#fff;border-radius:10px;font-size:12px;line-height:1.4;box-shadow:0 6px 28px -8px rgba(0,0,0,.25);">
+     <div id="legend-pop" role="dialog" aria-modal="false" aria-label="Mode legend" style="display:none;position:absolute;max-width:320px;margin-top:8px;padding:12px 14px;border:1px solid #2a2a2a;background:#1e1e1e;border-radius:10px;font-size:12px;line-height:1.4;box-shadow:0 6px 28px -8px rgba(0,0,0,.55);">
        <div style="font-weight:600;margin-bottom:6px;">Mode legend</div>
        <div style="display:flex;flex-direction:column;gap:4px;">
-         <div><span style="display:inline-block;width:14px;height:14px;background:#ffe1e1;border-radius:3px;border:1px solid #f4b4b4;margin-right:6px;vertical-align:middle;"></span><strong>Both</strong> – blocked for root + search</div>
-         <div><span style="display:inline-block;width:14px;height:14px;background:#ffefc2;border-radius:3px;border:1px solid #e9d088;margin-right:6px;vertical-align:middle;"></span><strong>Root</strong> – blocked only for root redirects</div>
-         <div><span style="display:inline-block;width:14px;height:14px;background:#d9edff;border-radius:3px;border:1px solid #9cc8ea;margin-right:6px;vertical-align:middle;"></span><strong>Search</strong> – blocked only when used in query</div>
-         <div><span style="display:inline-block;width:14px;height:14px;background:transparent;border:1px solid #ccc;border-radius:3px;margin-right:6px;vertical-align:middle;"></span><strong>Block</strong> – click to start blocking</div>
+         <div><span style="display:inline-block;width:14px;height:14px;background:#4d1515;border-radius:3px;border:1px solid #6d2a2a;margin-right:6px;vertical-align:middle;"></span><strong>Both</strong> – blocked for root + search</div>
+         <div><span style="display:inline-block;width:14px;height:14px;background:#46330a;border-radius:3px;border:1px solid #725616;margin-right:6px;vertical-align:middle;"></span><strong>Root</strong> – blocked only for root redirects</div>
+         <div><span style="display:inline-block;width:14px;height:14px;background:#0d2e47;border-radius:3px;border:1px solid #234d6d;margin-right:6px;vertical-align:middle;"></span><strong>Search</strong> – blocked only when used in query</div>
+         <div><span style="display:inline-block;width:14px;height:14px;background:transparent;border:1px solid #3d3d3d;border-radius:3px;margin-right:6px;vertical-align:middle;"></span><strong>Block</strong> – click to start blocking</div>
        </div>
-       <button type="button" id="legend-close" style="margin-top:10px;font-size:11px;padding:4px 8px;border:1px solid #ccc;border-radius:6px;background:#f7f7f7;cursor:pointer;">Close</button>
+       <button type="button" id="legend-close" class="btn btn-condensed" style="margin-top:10px;">Close</button>
      </div>
   </div>
   <script type="module" src="/src/blocklist.ts"></script>
