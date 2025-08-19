@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manage Blocked Bangs</title>
+  <meta name="description" content="Manage blocked bang tags" />
+  <link rel="stylesheet" href="/global.css" />
+  <style>
+    body { display:flex; min-height:100vh; align-items:center; justify-content:center; background:transparent; }
+    .panel { width:100%; max-width:640px; padding:32px 28px 40px; border:1px solid #e5e5e5; border-radius:16px; background:#fff; box-shadow:0 4px 24px -6px rgba(0,0,0,.08); }
+    h1 { font-size:28px; margin-bottom:4px; }
+    p.subtitle { color:#555; margin-bottom:20px; font-size:15px; }
+    form { display:flex; gap:8px; margin-bottom:16px; }
+    input[type=text]{ flex:1; padding:10px 14px; border:1px solid #ccc; border-radius:8px; background:#f7f7f7; transition:border-color .15s, box-shadow .15s; }
+    input[type=text]:focus{ outline:none; border-color:#888; background:#f7f7f7; box-shadow:0 0 0 2px rgba(0,0,0,.06); }
+    button.primary { background:#111; color:#fff; padding:10px 18px; border-radius:8px; font-weight:500; }
+    button.primary:hover { background:#000; }
+    .list-section { margin-top:8px; }
+    .chips { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 4px; }
+    .chip { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; background:#f0f0f0; border-radius:999px; font-size:14px; }
+    .chip button { font-size:14px; line-height:1; padding:0 4px; color:#666; }
+    .chip button:hover{ color:#000; }
+    .empty { font-size:14px; color:#777; font-style:italic; }
+    .search-wrap { margin:24px 0 12px; }
+    .results { max-height:260px; overflow:auto; border:1px solid #e5e5e5; border-radius:12px; }
+    .results table { width:100%; border-collapse:collapse; font-size:14px; }
+    .results tr { cursor:pointer; }
+    .results tr:hover { background:#fafafa; }
+    .results td { padding:8px 12px; border-bottom:1px solid #eee; }
+    .results tr:last-child td { border-bottom:none; }
+    .tag { font-family:monospace; background:#eee; padding:2px 6px; border-radius:6px; font-size:12px; }
+    .actions button.small { font-size:12px; padding:4px 8px; border-radius:6px; background:#222; color:#fff; }
+    .actions button.small.remove { background:#c62828; }
+    .actions button.small.remove:hover { background:#b71c1c; }
+    .actions button.small.added { background:#4caf50; }
+    .top-links { display:flex; justify-content:space-between; margin-bottom:18px; font-size:14px; }
+    .top-links a { color:#444; text-decoration:none; }
+    .top-links a:hover { text-decoration:underline; }
+    .hint { font-size:12px; color:#666; margin-top:6px; }
+    @media (prefers-color-scheme: dark){
+      .panel{ background:#161616; border-color:#2a2a2a; box-shadow:0 4px 28px -4px rgba(0,0,0,.6);} 
+      body{ background:#0d0d0d; color:#ddd; }
+      input[type=text]{ background:#1e1e1e; border-color:#333; color:#eee; }
+      input[type=text]:focus{ border-color:#666; background:#1e1e1e; box-shadow:0 0 0 2px rgba(255,255,255,.08); }
+      .chip{ background:#262626; }
+      .results{ border-color:#2a2a2a; }
+      .results tr:hover{ background:#1f1f1f; }
+      .results td{ border-bottom:1px solid #2a2a2a; }
+      .tag{ background:#262626; }
+      button.primary{ background:#efefef; color:#111; }
+      button.primary:hover{ background:#fff; }
+      .actions button.small{ background:#444; }
+      .actions button.small.added{ background:#2e7d32; }
+    }
+  </style>
+</head>
+<body>
+  <div class="panel" id="app">
+    <div class="top-links">
+      <a href="/">← Home</a>
+      <a href="/search">Search Bangs</a>
+    </div>
+    <h1>Blocked Bangs</h1>
+    <p class="subtitle">Add bang tags (without !). Requests using these will be stopped.</p>
+    <form id="add-form">
+      <input id="bang-input" type="text" placeholder="Enter bang tag e.g. cgpt" autocomplete="off" />
+      <button class="primary" type="submit">Add</button>
+    </form>
+    <div class="list-section">
+      <strong>Current blocked:</strong>
+      <div id="blocked-chips" class="chips"></div>
+      <div id="blocked-empty" class="empty" style="display:none;">None blocked yet.</div>
+    </div>
+    <div class="search-wrap">
+      <input id="filter-input" type="text" placeholder="Loading bang list…" />
+      <div class="hint">Click a row to toggle block. Total: <span id="total-count">—</span></div>
+    </div>
+    <div class="results" id="results"></div>
+  </div>
+  <script type="module" src="/src/blocklist.ts"></script>
+</body>
+</html>

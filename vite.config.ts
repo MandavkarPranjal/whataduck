@@ -17,6 +17,7 @@ export default defineConfig({
             input: {
                 main: resolve(__dirname, "index.html"),
                 search: resolve(__dirname, "search.html"),
+                blocklist: resolve(__dirname, "blocklist.html"),
             },
         },
     },
