@@ -208,9 +208,9 @@ textarea {
 .btn-condensed { padding:3px 7px;font-size:11px; }
 .btn-quiet { --btn-bg:transparent;--btn-bd:transparent;--btn-color:#888;--btn-bg-h:#1d1d1d; }
 
-.chip { display:inline-flex;align-items:center;gap:4px;background:#f3f3f3;border:1px solid #e1e1e1;padding:4px 8px;border-radius:999px;font-size:12px;margin:4px;position:relative; }
-.chip button { background:none;border:none;font-size:14px;line-height:1;color:#777;padding:0 2px 0 4px;cursor:pointer;border-radius:4px; }
-.chip button:hover { background:#e2e2e2;color:#333; }
+.chip { display:inline-flex;align-items:center;gap:4px;background:#1f1f1f;border:1px solid #333;padding:4px 8px;border-radius:999px;font-size:12px;margin:4px;position:relative;color:#d0d0d0; }
+.chip button { background:none;border:1px solid transparent;font-size:13px;line-height:1;color:#999;padding:0 4px;cursor:pointer;border-radius:4px; }
+.chip button:hover { background:#262626;color:#eee;border-color:#444; }
 
 /* Dark theme baseline (forced) */
 #app { background-color:#131313; }
