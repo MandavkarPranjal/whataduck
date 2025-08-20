@@ -37,7 +37,7 @@ const totalCountSpan = document.getElementById('total-count')!;
 let allBangs: Bang[] | null = null;
 let fuse: Fuse<Bang> | null = null;
 let current: Bang[] = [];
-let loading = false;
+
 let loadingPromise: Promise<void> | null = null;
 
 function ensureLoaded(): Promise<void> {
@@ -54,7 +54,7 @@ function ensureLoaded(): Promise<void> {
             current = allBangs.slice();
             renderTable();
         })
-        .finally(() => { loading = false; loadingPromise = null; });
+        .finally(() => { loadingPromise = null; });
     return loadingPromise;
 }
 
