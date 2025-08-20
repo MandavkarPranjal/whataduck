@@ -279,12 +279,21 @@ function applyFilter() {
     renderTable();
 }
 
+// Clear custom validity when user edits the field (only register once)
+let _bangValidityInit = false;
+function ensureBangValidityHandler() {
+    if (_bangValidityInit) return;
+    _bangValidityInit = true;
+    bangInput.addEventListener('input', () => { bangInput.setCustomValidity(''); });
+}
+ensureBangValidityHandler();
+
 addForm.addEventListener('submit', async e => {
     e.preventDefault();
     const tag = bangInput.value.trim().replace(/^!/, '').toLowerCase();
     if (!tag) return;
     await ensureLoaded();
-    if (!allBangs!.some(b => b.t.toLowerCase() === tag)) { bangInput.setCustomValidity('Unknown bang tag'); bangInput.reportValidity(); setTimeout(() => bangInput.setCustomValidity(''), 1500); return; }
+    if (!allBangs!.some(b => b.t.toLowerCase() === tag)) { bangInput.setCustomValidity('Unknown bang tag'); bangInput.reportValidity(); return; }
     announcedSetMode(tag, 'both');
     bangInput.value = '';
     renderBlocked();
