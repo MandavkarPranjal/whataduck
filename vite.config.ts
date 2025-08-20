@@ -10,6 +10,22 @@ export default defineConfig({
     plugins: [
         VitePWA({
             registerType: "autoUpdate",
+            manifest: {
+                name: 'whataduck',
+                short_name: 'whataduck',
+                start_url: '/',
+                display: 'standalone',
+                background_color: '#0d0d0d',
+                theme_color: '#0d0d0d',
+                lang: 'en',
+                scope: '/',
+                icons: [
+                    // Add icons if available in future
+                ],
+            },
+            workbox: {
+                navigateFallback: '/index.html',
+            }
         }),
     ],
     build: {
@@ -17,6 +33,7 @@ export default defineConfig({
             input: {
                 main: resolve(__dirname, "index.html"),
                 search: resolve(__dirname, "search.html"),
+                blocklist: resolve(__dirname, "blocklist.html"),
             },
         },
     },

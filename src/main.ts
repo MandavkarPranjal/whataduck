@@ -5,8 +5,9 @@ function noSearchDefaultPageRender() {
     const app = document.querySelector<HTMLDivElement>("#app")!;
 
     // Get current default bang from localStorage
-    const defaultBangFromStorage = localStorage.getItem("default-bang") ?? "ddg";
-    const defaultUrl = `https://whataduck.vercel.app?d=${defaultBangFromStorage}&q=%s`;
+    const storedDefault = localStorage.getItem("default-bang");
+    const defaultBangFromStorage = bangs.some(b => b.t === storedDefault) ? (storedDefault as string) : "ddg";
+    const defaultUrl = `${window.location.origin}?d=${defaultBangFromStorage}&q=%s`;
 
     app.innerHTML = `
     <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;">
@@ -32,7 +33,8 @@ function noSearchDefaultPageRender() {
           </select>
         </div>
       </div>
-      <footer class="footer">
+      <div style="margin-top:12px;font-size:14px;"><a href="/blocklist" style="text-decoration:none;color:#555;">Manage blocked bangs</a></div>
+      <footer class=\"footer\">
         <a href="https://x.com/__pr4njal" target="_blank">pranjal</a>
         •
         <a href="https://github.com/MandavkarPranjal/whataduck" target="_blank">github</a>
@@ -98,21 +100,60 @@ function noSearchDefaultPageRender() {
     });
 }
 
-function getBangredirectUrl() {
+interface RedirectResult { url: string | null; blocked?: { tag: string; url: string | null; reason: string; mode: 'root' | 'search' }; }
+
+// Legacy single list key - match blocklist.ts keys
+function loadLegacyBlocked(): Set<string> { try { const raw = localStorage.getItem('whataduck:blocked-bangs:v1'); if (!raw) return new Set(); const arr = JSON.parse(raw); return new Set(Array.isArray(arr) ? arr.map((s: any) => String(s).toLowerCase()) : []); } catch { return new Set(); } }
+
+interface BlockModes { [tag: string]: { root?: boolean; search?: boolean }; }
+const MODES_KEY = 'whataduck:blocked-bangs-modes:v1';
+function loadBlockModes(): BlockModes {
+    try {
+        const raw = localStorage.getItem(MODES_KEY);
+        if (!raw) return {};
+        const obj = JSON.parse(raw);
+        if (obj && typeof obj === 'object' && !Array.isArray(obj)) return obj as BlockModes;
+        return {};
+    } catch { return {}; }
+}
+
+function computeBlockSets() {
+    const legacy = loadLegacyBlocked();
+    const modes = loadBlockModes();
+    const root = new Set<string>();
+    const search = new Set<string>();
+    // Modes first
+    for (const k in modes) {
+        const low = k.toLowerCase();
+        if (modes[k].root) root.add(low);
+        if (modes[k].search) search.add(low);
+    }
+    // Legacy entries imply both if not already specified in modes
+    legacy.forEach(tag => {
+        if (!(tag in modes)) { root.add(tag); search.add(tag); }
+    });
+    return { root, search };
+}
+
+function getBangredirectUrl(): RedirectResult { // returns redirect info or blocked reason
     const url = new URL(window.location.href);
     const query = url.searchParams.get("q")?.trim() ?? "";
     const defaultBangParam = url.searchParams.get("d")?.trim();
 
-    if (!query) {
+    if (!query) { // no query => show landing
         noSearchDefaultPageRender();
-        return null;
+        return { url: null };
     }
 
     // Use URL parameter for default bang if provided, otherwise fall back to localStorage
     let defaultBangTag = defaultBangParam || localStorage.getItem("default-bang") || "ddg";
 
     // Store the default bang in localStorage if it came from URL parameter
-    if (defaultBangParam && defaultBangParam !== localStorage.getItem("default-bang")) {
+    if (
+        defaultBangParam &&
+        bangs.some(b => b.t === defaultBangParam) &&
+        defaultBangParam !== localStorage.getItem("default-bang")
+    ) {
         localStorage.setItem("default-bang", defaultBangParam);
     }
 
@@ -131,26 +172,104 @@ function getBangredirectUrl() {
         .replace(/\s*\S+!/, "") // Remove suffix bang
         .trim();
 
-    // If the query is empty bang, redirect to home page instead of search page
-    if (cleanQuery === "")
-        return selectedBang ? `https://${selectedBang.d}` : null;
+    // Load block sets once
+    const { root: blockedRoot, search: blockedSearch } = computeBlockSets();
 
-    // Format of the url is:
-    // https://www.google.com/search?q={{{s}}}
+    // Detect single bang only (no trailing search terms after removing it)
+    const isSingleBangOnly = !cleanQuery && (prefixMatch || suffixMatch);
+    const override = url.searchParams.get('override') === '1';
+
+    if (isSingleBangOnly && selectedBang) {
+        const tag = selectedBang.t.toLowerCase();
+        if (blockedRoot.has(tag) && !override) {
+            return { url: null, blocked: { tag: selectedBang.t, url: null, reason: 'Root redirect blocked', mode: 'root' } };
+        }
+        // No search terms -> root redirect allowed
+        return { url: selectedBang ? `https://${selectedBang.d}` : null };
+    }
+
+    // If we reach here we have search terms (or no bang found, fallback to default bang search)
     const searchUrl = selectedBang?.u.replace(
         "{{{s}}}",
-        // Replace %2F with / to fix formats like "!ghr+mandavkarpranjal/whataduck"
         encodeURIComponent(cleanQuery).replace(/%2F/g, "/")
     );
-    if (!searchUrl) return null;
+    if (!searchUrl) return { url: null };
 
-    return searchUrl;
+    if (selectedBang) {
+        const tag = selectedBang.t.toLowerCase();
+        if (blockedSearch.has(tag) && !override) {
+            return { url: null, blocked: { tag: selectedBang.t, url: searchUrl, reason: 'Search redirect blocked', mode: 'search' } };
+        }
+    }
+
+    return { url: searchUrl };
+}
+
+function showBlockedScreen(block: { tag: string; url: string | null; reason: string; mode: 'root' | 'search' }) {
+    const app = document.querySelector<HTMLDivElement>('#app');
+    if (!app) return;
+
+    // Determine override target: if block.url present use it; else derive engine root
+    let overrideTarget: string | null = block.url;
+    if (!overrideTarget) {
+        const engine = bangs.find(b => b.t.toLowerCase() === block.tag.toLowerCase());
+        if (engine) {
+            // Derive root: prefer domain field 'd' if present else parse from 'u'
+            if (engine.d) overrideTarget = `https://${engine.d}`; else if (engine.u) {
+                try {
+                    const m = engine.u.match(/https?:\/\/[^/]+/);
+                    if (m) overrideTarget = m[0];
+                } catch { /* noop */ }
+            }
+        }
+    }
+
+    app.innerHTML = `
+      <div class="blocked-shell">
+        <div class="blocked-card" role="alert" aria-labelledby="blocked-title" aria-describedby="blocked-desc">
+          <div class="blocked-icon" aria-hidden="true">⛔</div>
+          <h1 id="blocked-title" class="blocked-title">This bang is blocked</h1>
+          <p id="blocked-desc" class="blocked-desc">
+            Bang <code class="blocked-code" id="blocked-tag"></code> <span id="blocked-mode"></span> was prevented.
+          </p>
+          <div class="blocked-actions">
+            <button id="override-btn" class="blocked-btn blocked-btn-primary" disabled aria-disabled="true">Override once</button>
+            <a href="/blocklist" class="blocked-btn blocked-btn-secondary" id="manage-blocklist-btn">Manage blocklist</a>
+            <a href="/" class="blocked-home-link">← Home</a>
+          </div>
+        </div>
+      </div>`;
+
+    // Focus management
+    const manageBtn = document.getElementById('manage-blocklist-btn') as HTMLAnchorElement | null;
+    if (manageBtn) setTimeout(() => manageBtn.focus(), 0);
+
+    // Populate dynamic text safely
+    const tagCode = document.getElementById('blocked-tag');
+    if (tagCode) tagCode.textContent = `!${block.tag}`;
+    const modeSpan = document.getElementById('blocked-mode');
+    if (modeSpan) modeSpan.textContent = block.mode === 'root' ? 'root redirect' : 'search redirect';
+
+    // Wire override once
+    const overrideBtn = document.getElementById('override-btn') as HTMLButtonElement | null;
+    if (overrideBtn) {
+        const safeTarget = overrideTarget && /^https?:\/\//i.test(overrideTarget) ? overrideTarget : null;
+        if (safeTarget) {
+            overrideBtn.removeAttribute('disabled');
+            overrideBtn.setAttribute('aria-disabled', 'false');
+            overrideBtn.dataset.target = safeTarget;
+        }
+        overrideBtn.addEventListener('click', () => {
+            const target = overrideBtn.dataset.target;
+            if (target) window.location.replace(target);
+        });
+    }
 }
 
 function doRedirect() {
-    const searchUrl = getBangredirectUrl();
-    if (!searchUrl) return;
-    window.location.replace(searchUrl);
+    const result = getBangredirectUrl();
+    if (result.blocked) { showBlockedScreen(result.blocked); return; }
+    if (result.url) window.location.replace(result.url);
 }
 
 doRedirect();
