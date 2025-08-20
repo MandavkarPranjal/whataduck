@@ -229,9 +229,11 @@ function showBlockedScreen(block: { tag: string; url: string | null; reason: str
         <div class="blocked-card" role="alert" aria-labelledby="blocked-title" aria-describedby="blocked-desc">
           <div class="blocked-icon" aria-hidden="true">⛔</div>
           <h1 id="blocked-title" class="blocked-title">This bang is blocked</h1>
-          <p id="blocked-desc" class="blocked-desc">Bang <code class="blocked-code">!${block.tag}</code> ${block.mode === 'root' ? 'root redirect' : 'search redirect'} was prevented.</p>
+          <p id="blocked-desc" class="blocked-desc">
+            Bang <code class="blocked-code" id="blocked-tag"></code> <span id="blocked-mode"></span> was prevented.
+          </p>
           <div class="blocked-actions">
-            <button id="override-btn" class="blocked-btn blocked-btn-primary" data-target="${overrideTarget ?? ''}" ${overrideTarget ? '' : 'disabled aria-disabled="true"'}>Override once</button>
+            <button id="override-btn" class="blocked-btn blocked-btn-primary" disabled aria-disabled="true">Override once</button>
             <a href="/blocklist" class="blocked-btn blocked-btn-secondary" id="manage-blocklist-btn">Manage blocklist</a>
             <a href="/" class="blocked-home-link">← Home</a>
           </div>
@@ -242,22 +244,30 @@ function showBlockedScreen(block: { tag: string; url: string | null; reason: str
     const manageBtn = document.getElementById('manage-blocklist-btn') as HTMLAnchorElement | null;
     if (manageBtn) setTimeout(() => manageBtn.focus(), 0);
 
+    // Populate dynamic text safely
+    const tagCode = document.getElementById('blocked-tag');
+    if (tagCode) tagCode.textContent = `!${block.tag}`;
+    const modeSpan = document.getElementById('blocked-mode');
+    if (modeSpan) modeSpan.textContent = block.mode === 'root' ? 'root redirect' : 'search redirect';
+
+    // Wire override once
     const overrideBtn = document.getElementById('override-btn') as HTMLButtonElement | null;
     if (overrideBtn) {
+        const safeTarget = overrideTarget && /^https?:\/\//i.test(overrideTarget) ? overrideTarget : null;
+        if (safeTarget) {
+            overrideBtn.removeAttribute('disabled');
+            overrideBtn.setAttribute('aria-disabled', 'false');
+            overrideBtn.dataset.target = safeTarget;
+        }
         overrideBtn.addEventListener('click', () => {
-            const target = overrideBtn.getAttribute('data-target');
-            if (target) {
-                const loc = new URL(window.location.href);
-                loc.searchParams.set('override', '1');
-                window.location.replace(target);
-            }
+            const target = overrideBtn.dataset.target;
+            if (target) window.location.replace(target);
         });
     }
 }
 
 function doRedirect() {
     const result = getBangredirectUrl();
-    if (!result) return; // no query case already handled
     if (result.blocked) { showBlockedScreen(result.blocked); return; }
     if (result.url) window.location.replace(result.url);
 }

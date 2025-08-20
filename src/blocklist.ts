@@ -305,7 +305,16 @@ filterInput.addEventListener('input', () => {
     clearTimeout(filterDebounce);
     filterDebounce = setTimeout(() => applyFilter(), 150);
 });
-['focus', 'keydown', 'click'].forEach(ev => { filterInput.addEventListener(ev, async (e) => { if (!allBangs) await ensureLoaded(); if (ev === 'keydown' && (e as KeyboardEvent).key === 'Enter') { clearTimeout(filterDebounce); applyFilter(); } }); });
+['focus', 'keydown', 'click'].forEach(ev => {
+    filterInput.addEventListener(ev, async (e) => {
+        if (!allBangs) await ensureLoaded();
+        if (ev === 'keydown' && (e as KeyboardEvent).key === 'Enter') {
+            e.preventDefault();
+            clearTimeout(filterDebounce);
+            applyFilter();
+        }
+    });
+});
 
 renderBlocked();
 
@@ -314,8 +323,9 @@ const legendBtn = document.getElementById('legend-btn');
 const legendPop = document.getElementById('legend-pop');
 const legendClose = document.getElementById('legend-close');
 if (legendBtn && legendPop) {
-    const hide = () => { legendPop!.style.display = 'none'; legendBtn!.setAttribute('aria-expanded', 'false'); };
-    const show = () => { legendPop!.style.display = 'block'; legendBtn!.setAttribute('aria-expanded', 'true'); position(); };
+    let lastFocus: HTMLElement | null = null;
+    const hide = () => { legendPop!.style.display = 'none'; legendBtn!.setAttribute('aria-expanded', 'false'); (lastFocus ?? legendBtn as HTMLElement).focus(); };
+    const show = () => { legendPop!.style.display = 'block'; legendBtn!.setAttribute('aria-expanded', 'true'); position(); lastFocus = document.activeElement as HTMLElement; (legendPop as HTMLElement).focus(); };
     const toggle = () => { legendPop!.style.display === 'none' ? show() : hide(); };
     const position = () => {
         const rect = legendBtn!.getBoundingClientRect();
@@ -324,6 +334,7 @@ if (legendBtn && legendPop) {
     };
     legendBtn.addEventListener('click', e => { e.stopPropagation(); toggle(); });
     legendClose?.addEventListener('click', () => hide());
+    legendPop!.addEventListener('keydown', (e) => { if ((e as KeyboardEvent).key === 'Escape') { e.stopPropagation(); hide(); } });
     document.addEventListener('click', (e) => { if (!legendPop!.contains(e.target as Node) && e.target !== legendBtn) hide(); });
     window.addEventListener('resize', () => { if (legendPop!.style.display !== 'none') position(); });
     window.addEventListener('scroll', () => { if (legendPop!.style.display !== 'none') position(); });

@@ -61,12 +61,14 @@ h6 {
 
 a {
   color: #a9a9a9;
-  text-decoration:none;
+  text-decoration: none;
 }
 
 a:hover {
   color: #ccc;
+  text-decoration: underline;
 }
+a:focus-visible { outline: 2px solid #6b6b6b; outline-offset: 2px; }
 
 button {
   font: inherit;
@@ -200,7 +202,6 @@ textarea {
 .btn { --btn-bg:transparent;--btn-bd:#3d3d3d;--btn-color:#ddd;--btn-bg-h:#1f1f1f;--btn-bd-h:#555;--btn-ring:#6b6b6b;display:inline-flex;align-items:center;justify-content:center;padding:6px 12px;font-size:12px;font-weight:500;border:1px solid var(--btn-bd);border-radius:4px;background:var(--btn-bg);color:var(--btn-color);line-height:1.1;transition:background .16s,border-color .16s,color .16s,box-shadow .16s; }
 .btn:hover { background:var(--btn-bg-h);border-color:var(--btn-bd-h); }
 .btn:focus-visible { outline:2px solid var(--btn-ring); outline-offset:2px; }
-.btn-outline { }
 .btn-danger { --btn-bg:#d92b2b;--btn-bd:#d92b2b;--btn-color:#fff;--btn-bg-h:#c41f1f; box-shadow:0 0 0 0 rgba(217,43,43,0); }
 .btn-danger:hover { box-shadow:0 2px 6px -2px rgba(217,43,43,.55); }
 .btn-danger:active { transform:translateY(1px); }
