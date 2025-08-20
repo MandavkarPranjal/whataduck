@@ -43,7 +43,6 @@ let loadingPromise: Promise<void> | null = null;
 function ensureLoaded(): Promise<void> {
     if (allBangs) return Promise.resolve();
     if (loadingPromise) return loadingPromise;
-    loading = true;
     resultsDiv.innerHTML = '<div style="padding:16px; text-align:center; font-size:14px;">Loading bang list…</div>';
     loadingPromise = import('./bang')
         .then(mod => {
