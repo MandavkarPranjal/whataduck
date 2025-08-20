@@ -309,8 +309,10 @@ bangInput.addEventListener('focus', () => {
     bangInput.select(); // Select all text when input is focused
 });
 
+let filterDebounce: ReturnType<typeof setTimeout>;
 filterInput.addEventListener('input', () => {
-    applyFilter(); // Instant search without debounce
+    clearTimeout(filterDebounce);
+    filterDebounce = setTimeout(() => applyFilter(), 16); // ~60fps refresh rate
 });
 
 // Simple focus handler without any DOM manipulation
