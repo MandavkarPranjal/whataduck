@@ -49,7 +49,6 @@ function ensureLoaded(): Promise<void> {
             allBangs = mod.bangs.map(b => ({ ...b, c: (b as any).c ?? '', sc: (b as any).sc ?? '' }));
             fuse = new Fuse(allBangs, { keys: [{ name: 't', weight: 0.7 }, { name: 's', weight: 0.3 }], threshold: 0.4 });
             totalCountSpan.textContent = String(allBangs.length);
-            filterInput.disabled = false;
             filterInput.placeholder = 'Search bangs to block';
             current = allBangs.slice();
             renderTable();
