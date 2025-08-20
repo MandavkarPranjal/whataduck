@@ -36,7 +36,6 @@ const totalCountSpan = document.getElementById('total-count')!;
 
 let allBangs: Bang[] | null = null;
 let fuse: Fuse<Bang> | null = null;
-let current: Bang[] = [];
 
 let loadingPromise: Promise<void> | null = null;
 
@@ -50,8 +49,7 @@ function ensureLoaded(): Promise<void> {
             fuse = new Fuse(allBangs, { keys: [{ name: 't', weight: 0.7 }, { name: 's', weight: 0.3 }], threshold: 0.4 });
             totalCountSpan.textContent = String(allBangs.length);
             filterInput.placeholder = 'Search bangs to block';
-            current = allBangs.slice();
-            renderTable();
+            renderTableOptimized();
         })
         .finally(() => { loadingPromise = null; });
     return loadingPromise;
@@ -179,91 +177,191 @@ function ensureTable() {
     }
 }
 
-function renderTable() {
+// Infinite scroll configuration
+const FETCH_SIZE = 50; // Items to fetch at once
+const RENDER_SIZE = 25; // Items to render initially
+let fetchedItems: Bang[] = []; // All fetched items
+let renderedItems: Bang[] = []; // Currently rendered items
+let allFilteredItems: Bang[] = []; // All items after filtering
+let fetchOffset = 0;
+let isLoading = false;
+let hasMoreItems = true;
+
+function renderTableOptimized() {
     if (!allBangs) return;
     ensureTable();
-    const tbody = tbodyEl!;
-    const nextKeys: string[] = [];
+    
+    // Apply filter first
+    const term = filterInput.value.trim();
+    allFilteredItems = term ? fuse!.search(term).map(r => r.item) : allBangs.slice();
+    
+    // Reset state on new filter
+    fetchOffset = 0;
+    fetchedItems = [];
+    renderedItems = [];
+    hasMoreItems = true;
+    
+    // Initial fetch and render
+    fetchNextBatch();
+}
 
-    // Build set of current keys for removal detection
-    for (const b of current) {
-        nextKeys.push(b.t);
-    }
-
-    // Remove rows no longer present
-    for (const [key, tr] of rowMap) {
-        if (!nextKeys.includes(key)) {
-            tr.remove();
-            rowMap.delete(key);
-        }
-    }
-
-    // Iterate desired order, append / move / update
-    // diffing loop
-    for (let i = 0; i < current.length; i++) {
-        const b = current[i];
-        const key = b.t;
-        let tr = rowMap.get(key);
-        const mode = getMode(b.t);
-        const label = modeLabel(mode);
-        if (!tr) {
-            tr = document.createElement('tr');
-            tr.setAttribute('data-tag', b.t);
-            tr.className = `row-mode-${mode}`;
-            tr.setAttribute('aria-label', `Bang !${b.t} (${modeLabel(mode)})`);
-            const tdTag = document.createElement('td');
-            tdTag.style.width = '20%';
-            const spanTag = document.createElement('span');
-            spanTag.className = 'tag';
-            spanTag.textContent = '!' + b.t;
-            tdTag.appendChild(spanTag);
-
-            const tdDesc = document.createElement('td');
-            tdDesc.textContent = b.s;
-            tdDesc.style.wordWrap = 'break-word';
-            tdDesc.style.wordBreak = 'break-word';
-            tdDesc.style.maxWidth = '200px';
-            tdDesc.style.whiteSpace = 'normal';
-
-            const tdAction = document.createElement('td');
-            tdAction.style.width = '40%';
-            tdAction.style.minWidth = '80px';
-            tdAction.style.textAlign = 'right';
-            const btn = document.createElement('button');
-            btn.className = 'btn btn-outline mode-cycle';
-            btn.dataset.action = 'cycle';
-            btn.dataset.mode = mode;
-            btn.setAttribute('aria-pressed', String(mode !== 'none'));
-            btn.textContent = label;
-            tdAction.appendChild(btn);
-
-            tr.appendChild(tdTag);
-            tr.appendChild(tdDesc);
-            tr.appendChild(tdAction);
-            rowMap.set(key, tr);
-            attachRow(tr);
+function fetchNextBatch() {
+    if (isLoading || !hasMoreItems) return;
+    
+    isLoading = true;
+    
+    // Simulate async fetch (immediate for now since data is local)
+    setTimeout(() => {
+        const startIndex = fetchOffset;
+        const endIndex = Math.min(startIndex + FETCH_SIZE, allFilteredItems.length);
+        const newItems = allFilteredItems.slice(startIndex, endIndex);
+        
+        fetchedItems.push(...newItems);
+        fetchOffset = endIndex;
+        hasMoreItems = endIndex < allFilteredItems.length;
+        
+        // Render initial items or add more if we're at the end
+        if (renderedItems.length === 0) {
+            // Initial render - show first RENDER_SIZE items
+            renderInitialItems();
         } else {
-            // Update existing row if needed
-            updateRow(tr);
+            // Add remaining items from current batch
+            renderMoreItems();
         }
+        
+        isLoading = false;
+    }, 0);
+}
 
-        // Maintain order: if tr not at correct position, insert before the node that should follow
-        const expectedNext = tbody.children[i];
-        if (expectedNext !== tr) {
-            tbody.insertBefore(tr, expectedNext || null);
+function renderInitialItems() {
+    const itemsToRender = fetchedItems.slice(0, RENDER_SIZE);
+    renderedItems = [...itemsToRender];
+    updateDOM();
+    
+    // Set up scroll listener after initial render
+    setupInfiniteScroll();
+}
+
+function renderMoreItems() {
+    const currentRenderedCount = renderedItems.length;
+    const availableItems = fetchedItems.length;
+    const itemsToAdd = Math.min(RENDER_SIZE, availableItems - currentRenderedCount);
+    
+    if (itemsToAdd > 0) {
+        const newItems = fetchedItems.slice(currentRenderedCount, currentRenderedCount + itemsToAdd);
+        renderedItems.push(...newItems);
+        
+        // Append new rows efficiently
+        const tbody = tbodyEl!;
+        const fragment = document.createDocumentFragment();
+        
+        for (const item of newItems) {
+            const tr = createRow(item);
+            fragment.appendChild(tr);
+            rowMap.set(item.t, tr);
+        }
+        
+        tbody.appendChild(fragment);
+    }
+}
+
+function updateDOM() {
+    const tbody = tbodyEl!;
+    tbody.innerHTML = '';
+    rowMap.clear();
+    
+    const fragment = document.createDocumentFragment();
+    
+    for (const item of renderedItems) {
+        const tr = createRow(item);
+        fragment.appendChild(tr);
+        rowMap.set(item.t, tr);
+    }
+    
+    tbody.appendChild(fragment);
+    updateScrollIndicator();
+}
+
+function setupInfiniteScroll() {
+    const resultsContainer = resultsDiv;
+    
+    // Remove existing listener
+    resultsContainer.removeEventListener('scroll', handleScroll);
+    
+    // Add new listener
+    resultsContainer.addEventListener('scroll', handleScroll);
+}
+
+function handleScroll() {
+    const container = resultsDiv;
+    const scrollTop = container.scrollTop;
+    const scrollHeight = container.scrollHeight;
+    const clientHeight = container.clientHeight;
+    
+    // Check if we're near the bottom (within 100px)
+    const nearBottom = scrollTop + clientHeight >= scrollHeight - 100;
+    
+    if (nearBottom && !isLoading) {
+        const needsMoreRendering = renderedItems.length < fetchedItems.length;
+        const needsMoreFetching = hasMoreItems && fetchedItems.length - renderedItems.length < RENDER_SIZE;
+        
+        if (needsMoreFetching) {
+            // Fetch more items
+            fetchNextBatch();
+        } else if (needsMoreRendering) {
+            // Render more from already fetched items
+            renderMoreItems();
+            updateScrollIndicator();
         }
     }
 }
 
-function updateRow(tr: HTMLTableRowElement) {
-    const tag = tr.getAttribute('data-tag')!;
-    const mode = getMode(tag);
-    const btn = tr.querySelector('button.mode-cycle') as HTMLButtonElement | null;
-    if (btn) { btn.textContent = modeLabel(mode); btn.dataset.mode = mode; btn.setAttribute('aria-pressed', String(mode !== 'none')); }
-    tr.className = `row-mode-${mode}`;
+function updateScrollIndicator() {
+    let indicator = document.getElementById('scroll-indicator');
+    if (!indicator) {
+        indicator = document.createElement('div');
+        indicator.id = 'scroll-indicator';
+        indicator.style.cssText = 'text-align:center;padding:10px;font-size:12px;color:#666;';
+        resultsDiv.appendChild(indicator);
+    }
+    
+    const totalItems = allFilteredItems.length;
+    const renderedCount = renderedItems.length;
+    
+    if (renderedCount < totalItems) {
+        indicator.textContent = `Showing ${renderedCount} of ${totalItems} items (scroll for more)`;
+        indicator.style.display = 'block';
+    } else if (totalItems > 0) {
+        indicator.textContent = `All ${totalItems} items loaded`;
+        indicator.style.display = 'block';
+    } else {
+        indicator.style.display = 'none';
+    }
+    
+    if (isLoading) {
+        indicator.textContent = 'Loading more items...';
+    }
 }
 
-function attachRow(tr: HTMLTableRowElement) {
+function createRow(b: Bang): HTMLTableRowElement {
+    const mode = getMode(b.t);
+    const label = modeLabel(mode);
+    
+    const tr = document.createElement('tr');
+    tr.setAttribute('data-tag', b.t);
+    tr.className = `row-mode-${mode}`;
+    tr.setAttribute('aria-label', `Bang !${b.t} (${modeLabel(mode)})`);
+    
+    // Create cells with minimal DOM operations
+    tr.innerHTML = `
+        <td style="width:20%"><span class="tag">!${b.t}</span></td>
+        <td style="word-wrap:break-word;word-break:break-word;max-width:200px;white-space:normal">${escapeHtml(b.s)}</td>
+        <td style="width:40%;min-width:80px;text-align:right">
+            <button class="btn btn-outline mode-cycle" data-action="cycle" data-mode="${mode}" aria-pressed="${mode !== 'none'}">${label}</button>
+        </td>
+    `;
+    
+    // Attach event listener to button
     const btn = tr.querySelector('button.mode-cycle') as HTMLButtonElement;
     btn.addEventListener('click', e => {
         e.stopPropagation();
@@ -274,13 +372,27 @@ function attachRow(tr: HTMLTableRowElement) {
         updateRow(tr);
         renderBlocked();
     });
+    
+    return tr;
+}
+
+function escapeHtml(text: string): string {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function updateRow(tr: HTMLTableRowElement) {
+    const tag = tr.getAttribute('data-tag')!;
+    const mode = getMode(tag);
+    const btn = tr.querySelector('button.mode-cycle') as HTMLButtonElement | null;
+    if (btn) { btn.textContent = modeLabel(mode); btn.dataset.mode = mode; btn.setAttribute('aria-pressed', String(mode !== 'none')); }
+    tr.className = `row-mode-${mode}`;
 }
 
 function applyFilter() {
     if (!allBangs) return;
-    const term = filterInput.value.trim();
-    current = term ? fuse!.search(term).map(r => r.item) : allBangs.slice();
-    renderTable();
+    renderTableOptimized(); // This now handles filtering internally
 }
 
 // Clear custom validity when user edits the field (only register once)
