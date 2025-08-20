@@ -161,26 +161,94 @@ function renderBlocked() {
     });
 }
 
-function rowHtml(b: Bang): string {
-    const mode = getMode(b.t);
-    const label = modeLabel(mode);
-    const tag = esc(b.t);
-    const desc = esc(b.s);
-    return `<tr data-tag="${tag}" class="row-mode-${mode}" aria-label="Bang !${tag} (${modeLabel(mode)})">
-    <td style="width:20%;"><span class="tag">!${tag}</span></td>
-    <td>${desc}</td>
-    <td style="width:40%; text-align:right;">
-      <button class="btn btn-outline mode-cycle" data-action="cycle" aria-pressed="${mode !== 'none'}" data-mode="${mode}">${label}</button>
-    </td>
-  </tr>`;
+// Legacy full-row template retained (unused after diff impl)
+
+const rowMap: Map<string, HTMLTableRowElement> = new Map();
+let table: HTMLTableElement | null = null;
+let tbodyEl: HTMLTableSectionElement | null = null;
+
+function ensureTable() {
+    if (!table) {
+        resultsDiv.innerHTML = '';
+        table = document.createElement('table');
+        table.style.width = '100%';
+        table.style.borderCollapse = 'collapse';
+        table.style.fontSize = '14px';
+        tbodyEl = document.createElement('tbody');
+        table.appendChild(tbodyEl);
+        resultsDiv.appendChild(table);
+    }
 }
 
 function renderTable() {
     if (!allBangs) return;
-    resultsDiv.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:14px;"><tbody></tbody></table>';
-    const tbody = resultsDiv.querySelector('tbody')!;
-    tbody.innerHTML = current.map(b => rowHtml(b)).join('');
-    tbody.querySelectorAll('tr').forEach(tr => attachRow(tr as HTMLTableRowElement));
+    ensureTable();
+    const tbody = tbodyEl!;
+    const nextKeys: string[] = [];
+
+    // Build set of current keys for removal detection
+    for (const b of current) {
+        nextKeys.push(b.t);
+    }
+
+    // Remove rows no longer present
+    for (const [key, tr] of rowMap) {
+        if (!nextKeys.includes(key)) {
+            tr.remove();
+            rowMap.delete(key);
+        }
+    }
+
+    // Iterate desired order, append / move / update
+    // diffing loop
+    for (let i = 0; i < current.length; i++) {
+        const b = current[i];
+        const key = b.t;
+        let tr = rowMap.get(key);
+        const mode = getMode(b.t);
+        const label = modeLabel(mode);
+        if (!tr) {
+            tr = document.createElement('tr');
+            tr.setAttribute('data-tag', b.t);
+            tr.className = `row-mode-${mode}`;
+            tr.setAttribute('aria-label', `Bang !${b.t} (${modeLabel(mode)})`);
+            const tdTag = document.createElement('td');
+            tdTag.style.width = '20%';
+            const spanTag = document.createElement('span');
+            spanTag.className = 'tag';
+            spanTag.textContent = '!' + b.t;
+            tdTag.appendChild(spanTag);
+
+            const tdDesc = document.createElement('td');
+            tdDesc.textContent = b.s;
+
+            const tdAction = document.createElement('td');
+            tdAction.style.width = '40%';
+            tdAction.style.textAlign = 'right';
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-outline mode-cycle';
+            btn.dataset.action = 'cycle';
+            btn.dataset.mode = mode;
+            btn.setAttribute('aria-pressed', String(mode !== 'none'));
+            btn.textContent = label;
+            tdAction.appendChild(btn);
+
+            tr.appendChild(tdTag);
+            tr.appendChild(tdDesc);
+            tr.appendChild(tdAction);
+            rowMap.set(key, tr);
+            attachRow(tr);
+        } else {
+            // Update existing row if needed
+            updateRow(tr);
+        }
+
+        // Maintain order: if tr not at correct position, insert before the node that should follow
+        const expectedNext = tbody.children[i];
+        if (expectedNext !== tr) {
+            tbody.insertBefore(tr, expectedNext || null);
+        }
+    }
 }
 
 function updateRow(tr: HTMLTableRowElement) {
