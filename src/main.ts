@@ -102,11 +102,11 @@ function noSearchDefaultPageRender() {
 
 interface RedirectResult { url: string | null; blocked?: { tag: string; url: string | null; reason: string; mode: 'root' | 'search' }; }
 
-// Legacy single list key
-function loadLegacyBlocked(): Set<string> { try { const raw = localStorage.getItem('blocked-bangs'); if (!raw) return new Set(); const arr = JSON.parse(raw); return new Set(Array.isArray(arr) ? arr.map((s: any) => String(s).toLowerCase()) : []); } catch { return new Set(); } }
+// Legacy single list key - match blocklist.ts keys
+function loadLegacyBlocked(): Set<string> { try { const raw = localStorage.getItem('whataduck:blocked-bangs:v1'); if (!raw) return new Set(); const arr = JSON.parse(raw); return new Set(Array.isArray(arr) ? arr.map((s: any) => String(s).toLowerCase()) : []); } catch { return new Set(); } }
 
 interface BlockModes { [tag: string]: { root?: boolean; search?: boolean }; }
-const MODES_KEY = 'blocked-bangs-modes';
+const MODES_KEY = 'whataduck:blocked-bangs-modes:v1';
 function loadBlockModes(): BlockModes {
     try {
         const raw = localStorage.getItem(MODES_KEY);

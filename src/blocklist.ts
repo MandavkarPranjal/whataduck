@@ -172,6 +172,7 @@ function ensureTable() {
         table.style.width = '100%';
         table.style.borderCollapse = 'collapse';
         table.style.fontSize = '14px';
+        table.style.tableLayout = 'fixed';
         tbodyEl = document.createElement('tbody');
         table.appendChild(tbodyEl);
         resultsDiv.appendChild(table);
@@ -219,9 +220,14 @@ function renderTable() {
 
             const tdDesc = document.createElement('td');
             tdDesc.textContent = b.s;
+            tdDesc.style.wordWrap = 'break-word';
+            tdDesc.style.wordBreak = 'break-word';
+            tdDesc.style.maxWidth = '200px';
+            tdDesc.style.whiteSpace = 'normal';
 
             const tdAction = document.createElement('td');
             tdAction.style.width = '40%';
+            tdAction.style.minWidth = '80px';
             tdAction.style.textAlign = 'right';
             const btn = document.createElement('button');
             btn.className = 'btn btn-outline mode-cycle';
@@ -298,20 +304,20 @@ addForm.addEventListener('submit', async e => {
     const row = resultsDiv.querySelector(`tr[data-tag="${tag}"]`); if (row) updateRow(row as HTMLTableRowElement);
 });
 
+// Add focus handler for bang input like search page
+bangInput.addEventListener('focus', () => {
+    bangInput.select(); // Select all text when input is focused
+});
+
 let filterDebounce: ReturnType<typeof setTimeout>;
 filterInput.addEventListener('input', () => {
     clearTimeout(filterDebounce);
-    filterDebounce = setTimeout(() => applyFilter(), 150);
+    filterDebounce = setTimeout(() => applyFilter(), 50);
 });
-['focus', 'keydown', 'click'].forEach(ev => {
-    filterInput.addEventListener(ev, async (e) => {
-        if (!allBangs) await ensureLoaded();
-        if (ev === 'keydown' && (e as KeyboardEvent).key === 'Enter') {
-            e.preventDefault();
-            clearTimeout(filterDebounce);
-            applyFilter();
-        }
-    });
+
+// Simple focus handler without any DOM manipulation
+filterInput.addEventListener('focus', () => {
+    filterInput.select(); // Select all text when input is focused
 });
 
 renderBlocked();
@@ -333,7 +339,13 @@ if (legendBtn && legendPop) {
     legendBtn.addEventListener('click', e => { e.stopPropagation(); toggle(); });
     legendClose?.addEventListener('click', () => hide());
     legendPop!.addEventListener('keydown', (e) => { if ((e as KeyboardEvent).key === 'Escape') { e.stopPropagation(); hide(); } });
-    document.addEventListener('click', (e) => { if (!legendPop!.contains(e.target as Node) && e.target !== legendBtn) hide(); });
+    document.addEventListener('click', (e) => { 
+        const target = e.target as Node;
+        // Don't hide if clicking on legend popup, legend button, or input fields
+        if (!legendPop!.contains(target) && target !== legendBtn && target !== bangInput && target !== filterInput) {
+            hide(); 
+        }
+    });
     window.addEventListener('resize', () => { if (legendPop!.style.display !== 'none') position(); });
     window.addEventListener('scroll', () => { if (legendPop!.style.display !== 'none') position(); });
 }
@@ -342,3 +354,8 @@ if (legendBtn && legendPop) {
     const start = () => { if (!allBangs) ensureLoaded(); };
     if ('requestIdleCallback' in window) { (window as any).requestIdleCallback(start, { timeout: 1500 }); } else { setTimeout(start, 150); }
 })();
+
+// DEBUG instrumentation - simplified
+console.log('[blocklist] script loaded');
+window.addEventListener('error', e => console.error('[blocklist] window error', e.error || e.message));
+window.addEventListener('unhandledrejection', e => console.error('[blocklist] unhandled rejection', e.reason));
