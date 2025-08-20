@@ -5,8 +5,9 @@ function noSearchDefaultPageRender() {
     const app = document.querySelector<HTMLDivElement>("#app")!;
 
     // Get current default bang from localStorage
-    const defaultBangFromStorage = localStorage.getItem("default-bang") ?? "ddg";
-    const defaultUrl = `https://whataduck.vercel.app?d=${defaultBangFromStorage}&q=%s`;
+    const storedDefault = localStorage.getItem("default-bang");
+    const defaultBangFromStorage = bangs.some(b => b.t === storedDefault) ? (storedDefault as string) : "ddg";
+    const defaultUrl = `${window.location.origin}?d=${defaultBangFromStorage}&q=%s`;
 
     app.innerHTML = `
     <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;">
@@ -148,7 +149,11 @@ function getBangredirectUrl(): RedirectResult { // returns redirect info or bloc
     let defaultBangTag = defaultBangParam || localStorage.getItem("default-bang") || "ddg";
 
     // Store the default bang in localStorage if it came from URL parameter
-    if (defaultBangParam && defaultBangParam !== localStorage.getItem("default-bang")) {
+    if (
+        defaultBangParam &&
+        bangs.some(b => b.t === defaultBangParam) &&
+        defaultBangParam !== localStorage.getItem("default-bang")
+    ) {
         localStorage.setItem("default-bang", defaultBangParam);
     }
 

@@ -1,11 +1,18 @@
 import './global.css';
 import Fuse from 'fuse.js';
 
-interface Bang { t: string; s: string; d: string; r: number; u: string; c?: string; sc?: string; }
+import type { Bang as BangType } from './bang';
+type Bang = BangType & { c?: string; sc?: string };
 interface ModesMap { [tag: string]: { root?: boolean; search?: boolean }; }
 
-const LEGACY_KEY = 'blocked-bangs'; // represents Both (root+search)
-const MODES_KEY = 'blocked-bangs-modes'; // partial modes for tags not in legacy
+const LEGACY_KEY = 'whataduck:blocked-bangs:v1'; // represents Both (root+search)
+const MODES_KEY = 'whataduck:blocked-bangs-modes:v1'; // partial modes for tags not in legacy
+
+function esc(s: string): string {
+    return s.replace(/[&<>"'`]/g, (ch) =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' } as const)[ch]!
+    );
+}
 
 function loadLegacy(): Set<string> {
     try { const raw = localStorage.getItem(LEGACY_KEY); if (!raw) return new Set(); const arr = JSON.parse(raw); if (Array.isArray(arr)) return new Set(arr.map(s => String(s).toLowerCase())); } catch { }; return new Set();
@@ -31,21 +38,25 @@ let allBangs: Bang[] | null = null;
 let fuse: Fuse<Bang> | null = null;
 let current: Bang[] = [];
 let loading = false;
+let loadingPromise: Promise<void> | null = null;
 
 function ensureLoaded(): Promise<void> {
     if (allBangs) return Promise.resolve();
-    if (loading) return new Promise(res => { const iv = setInterval(() => { if (!loading) { clearInterval(iv); res(); } }, 30); });
+    if (loadingPromise) return loadingPromise;
     loading = true;
     resultsDiv.innerHTML = '<div style="padding:16px; text-align:center; font-size:14px;">Loading bang list…</div>';
-    return import('./bang').then(mod => {
-        allBangs = mod.bangs.map(b => ({ ...b, c: (b as any).c ?? '', sc: (b as any).sc ?? '' }));
-        fuse = new Fuse(allBangs, { keys: [{ name: 't', weight: 0.7 }, { name: 's', weight: 0.3 }], threshold: 0.4 });
-        totalCountSpan.textContent = String(allBangs.length);
-        filterInput.disabled = false;
-        filterInput.placeholder = 'Search bangs to block';
-        current = allBangs.slice();
-        renderTable();
-    }).finally(() => { loading = false; });
+    loadingPromise = import('./bang')
+        .then(mod => {
+            allBangs = mod.bangs.map(b => ({ ...b, c: (b as any).c ?? '', sc: (b as any).sc ?? '' }));
+            fuse = new Fuse(allBangs, { keys: [{ name: 't', weight: 0.7 }, { name: 's', weight: 0.3 }], threshold: 0.4 });
+            totalCountSpan.textContent = String(allBangs.length);
+            filterInput.disabled = false;
+            filterInput.placeholder = 'Search bangs to block';
+            current = allBangs.slice();
+            renderTable();
+        })
+        .finally(() => { loading = false; loadingPromise = null; });
+    return loadingPromise;
 }
 
 // Helpers for mode
@@ -119,11 +130,13 @@ function renderBlocked() {
         const m = modes[k];
         if (legacy.has(k)) continue; // legacy wins
         if (m.root && m.search) { // normalize to both -> move into legacy for cleanliness
-            legacy.add(k); delete modes[k]; saveLegacy(legacy); saveModes(modes); entries.push({ tag: k, mode: 'both' }); continue;
+            legacy.add(k); delete modes[k]; entries.push({ tag: k, mode: 'both' }); continue;
         }
         if (m.root) entries.push({ tag: k, mode: 'root' });
         else if (m.search) entries.push({ tag: k, mode: 'search' });
     }
+    // Single write after potential normalizations
+    saveLegacy(legacy); saveModes(modes);
     if (entries.length === 0) {
         blockedChips.innerHTML = '';
         blockedEmpty.style.display = 'block';
@@ -131,9 +144,11 @@ function renderBlocked() {
         return;
     }
     blockedEmpty.style.display = 'none';
-    blockedChips.innerHTML = entries.sort((a, b) => a.tag.localeCompare(b.tag)).map(e =>
-        `<span class="chip" data-chip="${e.tag}"><code>!${e.tag}</code><span style="font-size:11px;">${modeSuffix(e.mode).trim()}</span><button aria-label="Unblock ${e.tag}" data-remove="${e.tag}">×</button></span>`
-    ).join('');
+    blockedChips.innerHTML = entries.sort((a, b) => a.tag.localeCompare(b.tag)).map(e => {
+        const tag = esc(e.tag);
+        const suffix = esc(modeSuffix(e.mode).trim());
+        return `<span class="chip" data-chip="${tag}"><code>!${tag}</code><span style="font-size:11px;">${suffix}</span><button aria-label="Unblock ${tag}" data-remove="${tag}">×</button></span>`;
+    }).join('');
     blockedChips.querySelectorAll('button[data-remove]').forEach(btn => {
         btn.addEventListener('click', ev => {
             ev.stopPropagation();
@@ -149,9 +164,11 @@ function renderBlocked() {
 function rowHtml(b: Bang): string {
     const mode = getMode(b.t);
     const label = modeLabel(mode);
-    return `<tr data-tag="${b.t}" class="row-mode-${mode}" aria-label="Bang !${b.t} (${modeLabel(mode)})">
-    <td style="width:20%;"><span class="tag">!${b.t}</span></td>
-    <td>${b.s}</td>
+    const tag = esc(b.t);
+    const desc = esc(b.s);
+    return `<tr data-tag="${tag}" class="row-mode-${mode}" aria-label="Bang !${tag} (${modeLabel(mode)})">
+    <td style="width:20%;"><span class="tag">!${tag}</span></td>
+    <td>${desc}</td>
     <td style="width:40%; text-align:right;">
       <button class="btn btn-outline mode-cycle" data-action="cycle" aria-pressed="${mode !== 'none'}" data-mode="${mode}">${label}</button>
     </td>
