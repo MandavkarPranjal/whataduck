@@ -139,6 +139,15 @@ export const bangs = [
     },
     {
         c: "Tech",
+        d: "vercel.com/domains",
+        r: 0,
+        s: "Vercel Domains - Find a domain fast at reasonable price",
+        sc: "Programming",
+        t: "vd",
+        u: "https://vercel.com/domains/search?q={{{s}}}",
+    },
+    {
+        c: "Tech",
         d: "21st.dev",
         r: 0,
         s: "21st.dev - Best component library for developer",
