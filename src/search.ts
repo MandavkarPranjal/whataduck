@@ -58,7 +58,7 @@ function createHardSearchPage(): void {
     <div style="display: flex; flex-direction: column; min-height: 100vh; margin: 0; font-family: sans-serif; align-items: center; justify-content: space-between;">
       <div style="text-align: center; width: 100%; max-width: 600px; padding: 20px 0; display: flex; flex-direction: column; justify-content: center; flex-grow: 1;">
         <h2 style="margin-bottom: 20px;">${bangs.length} bangs and counting</h2>
-        
+
         <div style="margin-bottom: 20px;">
           <label for="search-default-bang-select" style="display: block; margin-bottom: 8px; font-weight: 500;">Default search engine:</label>
           <select id="search-default-bang-select" style="padding: 8px; margin-bottom: 12px; border-radius: 4px; border: 1px solid #ccc; min-width: 200px;">
@@ -68,7 +68,7 @@ function createHardSearchPage(): void {
             Your custom URL: <span id="custom-url-display" style="font-family: monospace; background: #f5f5f5; padding: 2px 4px; border-radius: 2px;"></span>
           </div>
         </div>
-        
+
         <input id="search-input" type="text" placeholder="Search bangs"
           style="width:100%; padding:10px; font-size:16px; box-sizing:border-box; margin-bottom:20px;" />
         <div id="results-container" style="width: 100%; flex: 1; overflow-y: auto; padding: 0 20px; box-sizing: border-box;">
@@ -77,7 +77,7 @@ function createHardSearchPage(): void {
         </div>
       </div>
       <footer class="footer">
-        <a href="https://x.com/__pr4njal" target="_blank">pranjal</a>
+        <a href="https://x.com/pr5dev" target="_blank">pranjal</a>
         •
         <a href="https://github.com/MandavkarPranjal/whataduck" target="_blank">github</a>
       </footer>
@@ -110,7 +110,7 @@ function createHardSearchPage(): void {
 
     const currentSelectedBang = localStorage.getItem("default-bang") ?? "ddg";
     const currentBangObj = bangs.find(b => b.t === currentSelectedBang);
-    
+
     let selectOptions = "";
     popularBangs.forEach(bang => {
         const bangDetails = bangs.find(b => b.t === bang.t);
@@ -131,7 +131,7 @@ function createHardSearchPage(): void {
     function updateCustomUrlDisplay(bangTag: string) {
         customUrlDisplay.textContent = `https://whataduck.vercel.app?d=${bangTag}&q=%s`;
     }
-    
+
     updateCustomUrlDisplay(currentSelectedBang);
 
     // Handle default bang selection change
@@ -152,12 +152,13 @@ function createHardSearchPage(): void {
      * @param results - An array of bang entries to display.
      * @param page - The current page number (default: 1)
      */
-     function displayResults(results: typeof bangs, page: number = 1): void {
+    function displayResults(results: typeof bangs, page: number = 1): void {
         // Store all results for pagination
         allResults = results;
         // Removed assignment to currentPage variable
-        
-        if (results.length === 0) {            resultsContainer.innerHTML = "No results found.";
+
+        if (results.length === 0) {
+            resultsContainer.innerHTML = "No results found.";
             paginationControls.innerHTML = "";
             return;
         }
@@ -289,7 +290,7 @@ function createHardSearchPage(): void {
                 }
             });
         }
-        
+
         if (nextButton) {
             nextButton.addEventListener("click", () => {
                 if (currentPage < totalPages) {
@@ -297,9 +298,10 @@ function createHardSearchPage(): void {
                 }
             });
         }
-        
+
         // Save the current page as a data attribute on the container for state persistence
-        paginationControls.dataset.currentPage = currentPage.toString();    }
+        paginationControls.dataset.currentPage = currentPage.toString();
+    }
 
     /**
      * Displays the full list of bangs with pagination.

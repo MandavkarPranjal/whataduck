@@ -35,7 +35,7 @@ function noSearchDefaultPageRender() {
       </div>
       <div style="margin-top:12px;font-size:14px;"><a href="/blocklist" style="text-decoration:none;color:#555;">Manage blocked bangs</a></div>
       <footer class=\"footer\">
-        <a href="https://x.com/__pr4njal" target="_blank">pranjal</a>
+        <a href="https://x.com/pr5dev" target="_blank">pranjal</a>
         •
         <a href="https://github.com/MandavkarPranjal/whataduck" target="_blank">github</a>
       </footer>
