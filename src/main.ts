@@ -32,8 +32,29 @@ function noSearchDefaultPageRender() {
           <select id="default-bang-select" style="padding: 8px; margin-bottom: 12px; border-radius: 4px; border: 1px solid #ccc; min-width: 200px;">
           </select>
         </div>
-      </div>
       <div style="margin-top:12px;font-size:14px;"><a href="/blocklist" style="text-decoration:none;color:#555;">Manage blocked bangs</a></div>
+
+        <div class="suggestions-container">
+          <p style="font-size: 14px; color: #999; margin-bottom: 12px;">For autocomplete suggestions, add this URL:</p>
+          <div class="url-container">
+            <input
+              type="text"
+              class="url-input suggestions-input"
+              value="https://www.google.com/complete/search?client=chrome&q=%s"
+              readonly
+            />
+            <button class="copy-button suggestions-copy">
+              <img src="/clipboard.svg" alt="Copy" />
+            </button>
+          </div>
+          <div style="margin-top: 8px;">
+            <select id="suggestions-select" style="padding: 6px; border-radius: 4px; border: 1px solid #3d3d3d; background-color: #191919; color: #fff; font-size: 14px;">
+              <option value="chrome">Chrome (recommended)</option>
+              <option value="firefox">Firefox</option>
+            </select>
+          </div>
+        </div>
+      </div>
       <footer class=\"footer\">
         <a href="https://x.com/pr5dev" target="_blank">pranjal</a>
         •
@@ -46,6 +67,10 @@ function noSearchDefaultPageRender() {
     const copyIcon = copyButton.querySelector("img")!;
     const urlInput = app.querySelector<HTMLInputElement>(".url-input")!;
     const defaultBangSelect = app.querySelector<HTMLSelectElement>("#default-bang-select")!;
+    const suggestionsCopy = app.querySelector<HTMLButtonElement>(".suggestions-copy")!;
+    const suggestionsIcon = suggestionsCopy.querySelector("img")!;
+    const suggestionsInput = app.querySelector<HTMLInputElement>(".suggestions-input")!;
+    const suggestionsSelect = app.querySelector<HTMLSelectElement>("#suggestions-select")!;
 
     // Populate the default bang selector
     const popularBangs = [
@@ -96,6 +121,22 @@ function noSearchDefaultPageRender() {
 
         setTimeout(() => {
             copyIcon.src = "/clipboard.svg";
+        }, 2000);
+    });
+
+    // Update suggestions URL when selection changes
+    suggestionsSelect.addEventListener("change", () => {
+        const client = suggestionsSelect.value;
+        suggestionsInput.value = `https://www.google.com/complete/search?client=${client}&q=%s`;
+    });
+
+    // Copy suggestions URL
+    suggestionsCopy.addEventListener("click", async () => {
+        await navigator.clipboard.writeText(suggestionsInput.value);
+        suggestionsIcon.src = "/clipboard-check.svg";
+
+        setTimeout(() => {
+            suggestionsIcon.src = "/clipboard.svg";
         }, 2000);
     });
 }

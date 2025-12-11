@@ -129,6 +129,19 @@ textarea {
   height: 20px;
 }
 
+.suggestions-container {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #2a2a2a;
+}
+
+.suggestions-input {
+  font-size: 14px;
+  background-color: #191919;
+  border-color: #3d3d3d;
+  color: #fff;
+}
+
 .copy-button.copied {
   background: #28a745;
 }
