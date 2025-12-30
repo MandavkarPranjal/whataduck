@@ -1,3 +1,4 @@
+services:
   - type: web
     name: whataduck
     runtime: static
