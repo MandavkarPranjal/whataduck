@@ -1,0 +1,5 @@
+  - type: web
+    name: whataduck
+    runtime: static
+    buildCommand: pnpm install --frozen-lockfile; pnpm run build
+    staticPublishPath: dist
