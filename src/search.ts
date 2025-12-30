@@ -129,7 +129,7 @@ function createHardSearchPage(): void {
 
     // Update custom URL display
     function updateCustomUrlDisplay(bangTag: string) {
-        customUrlDisplay.textContent = `https://whataduck.vercel.app?d=${bangTag}&q=%s`;
+        customUrlDisplay.textContent = `${window.location.origin}?d=${bangTag}&q=%s`;
     }
 
     updateCustomUrlDisplay(currentSelectedBang);

@@ -112,7 +112,7 @@ function noSearchDefaultPageRender() {
     defaultBangSelect.addEventListener("change", () => {
         const selectedBang = defaultBangSelect.value;
         localStorage.setItem("default-bang", selectedBang);
-        urlInput.value = `https://whataduck.vercel.app?d=${selectedBang}&q=%s`;
+        urlInput.value = `${window.location.origin}?d=${selectedBang}&q=%s`;
     });
 
     copyButton.addEventListener("click", async () => {
