@@ -126,7 +126,7 @@ export const bangs = [
         s: "AnimeKai",
         sc: "Video",
         t: "anik",
-        u: "https://animekai.to/browser?keyword={{{s}}}"
+        u: "https://anikai.to/browser?keyword={{{s}}}"
     },
     {
         c: "Tech",
