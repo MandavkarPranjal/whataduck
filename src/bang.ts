@@ -237,6 +237,15 @@ export const bangs = [
         u: "https://comick.io/search?q={{{s}}}",
     },
     {
+      c: "Translation",
+      d: "translate.kagi.com",
+      r: 7428,
+      s: "Kagi Translate",
+      sc: "Kagi Tools",
+      t: "ktr",
+      u: "https://translate.kagi.com/?from=auto&to=en&text={{{s}}}",
+    },
+    {
         c: "Tech",
         d: "www.01net.com",
         r: 4,
