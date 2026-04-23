@@ -75090,6 +75090,15 @@ export const bangs = [
   },
   {
     c: "Tech",
+    d: "npmx.dev",
+    r: 147,
+    s: "npmx",
+    sc: "Programming",
+    t: "npmx",
+    u: "https://npmx.dev/search?q={{{s}}}",
+  },
+  {
+    c: "Tech",
     d: "npmsearch.com",
     r: 0,
     s: "node.js Package Search Utility",
