@@ -1,7 +1,8 @@
 import './global.css';
 import Fuse from 'fuse.js';
 
-import type { Bang as BangType } from './bang';
+import type { BangEntry as BangType } from './lib/bangStore';
+import { loadFullBangs } from './lib/bangStore';
 type Bang = BangType & { c?: string; sc?: string };
 interface ModesMap { [tag: string]: { root?: boolean; search?: boolean }; }
 
@@ -43,13 +44,17 @@ function ensureLoaded(): Promise<void> {
     if (allBangs) return Promise.resolve();
     if (loadingPromise) return loadingPromise;
     resultsDiv.innerHTML = '<div style="padding:16px; text-align:center; font-size:14px;">Loading bang list…</div>';
-    loadingPromise = import('./bang')
-        .then(mod => {
-            allBangs = mod.bangs.map(b => ({ ...b, c: (b as any).c ?? '', sc: (b as any).sc ?? '' }));
+    loadingPromise = loadFullBangs()
+        .then(entries => {
+            allBangs = entries.map(b => ({ ...b, c: '', sc: '' }));
             fuse = new Fuse(allBangs, { keys: [{ name: 't', weight: 0.7 }, { name: 's', weight: 0.3 }], threshold: 0.4 });
             totalCountSpan.textContent = String(allBangs.length);
             filterInput.placeholder = 'Search bangs to block';
             renderTableOptimized();
+        })
+        .catch(err => {
+            resultsDiv.innerHTML = '<div style="padding:16px; text-align:center; font-size:14px;">Could not load the bang list. Check your connection and reload.</div>';
+            if (import.meta.env.DEV) console.error('[blocklist] loadFullBangs failed', err);
         })
         .finally(() => { loadingPromise = null; });
     return loadingPromise;
@@ -466,8 +471,3 @@ if (legendBtn && legendPop) {
     const start = () => { if (!allBangs) ensureLoaded(); };
     if ('requestIdleCallback' in window) { (window as any).requestIdleCallback(start, { timeout: 1500 }); } else { setTimeout(start, 150); }
 })();
-
-// DEBUG instrumentation - simplified
-console.log('[blocklist] script loaded');
-window.addEventListener('error', e => console.error('[blocklist] window error', e.error || e.message));
-window.addEventListener('unhandledrejection', e => console.error('[blocklist] unhandled rejection', e.reason));

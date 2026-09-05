@@ -1,3 +1,6 @@
+// SOURCE OF TRUTH for bang data (vendored). Not bundled directly — run
+// `pnpm run build:bangs` (scripts/build-bangs.py) after editing to regenerate
+// src/generated/bangRedirect.ts (redirect path) + public/data/bangs.min.json.
 // This file was (mostly) ripped from https://duckduckgo.com/bang.js
 
 export interface Bang {

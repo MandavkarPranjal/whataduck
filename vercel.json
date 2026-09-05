@@ -3,6 +3,28 @@
     {
       "source": "/search",
       "destination": "/search.html"
+    },
+    {
+      "source": "/blocklist",
+      "destination": "/blocklist.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/data/bangs-version.json",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=300, stale-while-revalidate=86400" }]
+    },
+    {
+      "source": "/data/bangs.min.json",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=3600, stale-while-revalidate=86400" }]
+    },
+    {
+      "source": "/data/bangs-patch-:v.json",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
     }
   ]
 }

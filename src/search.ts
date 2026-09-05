@@ -1,25 +1,22 @@
-import { bangs, Bang } from "./bang";
 import "./global.css";
 import Fuse from "fuse.js";
+import { loadFullBangs, type BangEntry as Bang } from "./lib/bangStore";
 
-// Initialize Fuse.js for fuzzy searching
-const normalizedBangs: Bang[] = bangs.map(bang => ({
-    c: (bang as any).c ?? "",
-    d: bang.d,
-    r: bang.r,
-    s: bang.s,
-    sc: (bang as any).sc ?? "",
-    t: bang.t,
-    u: bang.u
-}));
+// Full list loads lazily (IndexedDB + versioned JSON) — never bundled.
+// Populated before first render; searchBangs falls back to [] until ready.
+let bangs: Bang[] = [];
+let fuse: Fuse<Bang> | null = null;
 
-const fuse = new Fuse<Bang>(normalizedBangs, {
-    keys: [
-        { name: 't', weight: 0.7 },
-        { name: 's', weight: 0.3 }
-    ],
-    threshold: 0.4
-});
+function buildIndex(entries: Bang[]): void {
+    bangs = entries;
+    fuse = new Fuse<Bang>(entries, {
+        keys: [
+            { name: 't', weight: 0.7 },
+            { name: 's', weight: 0.3 }
+        ],
+        threshold: 0.4
+    });
+}
 /**
  * Uses Fuse.js to perform fuzzy search on bangs.
  * @param query - The search query input by the user.
@@ -27,17 +24,9 @@ const fuse = new Fuse<Bang>(normalizedBangs, {
  */
 function searchBangs(query: string): Bang[] {
     if (!query) {
-        // Ensure all objects have required properties with default values
-        return bangs.map(bang => ({
-            c: (bang as any).c ?? "",
-            d: bang.d,
-            r: bang.r,
-            s: bang.s,
-            sc: (bang as any).sc ?? "",
-            t: bang.t,
-            u: bang.u
-        }));
+        return bangs;
     }
+    if (!fuse) return [];
     const results = fuse.search(query);
     return results.map(result => result.item);
 }
@@ -57,7 +46,7 @@ function createHardSearchPage(): void {
     app.innerHTML = `
     <div style="display: flex; flex-direction: column; min-height: 100vh; margin: 0; font-family: sans-serif; align-items: center; justify-content: space-between;">
       <div style="text-align: center; width: 100%; max-width: 600px; padding: 20px 0; display: flex; flex-direction: column; justify-content: center; flex-grow: 1;">
-        <h2 style="margin-bottom: 20px;">${bangs.length} bangs and counting</h2>
+        <h2 id="bang-count" style="margin-bottom: 20px;">Loading bangs…</h2>
 
         <div style="margin-bottom: 20px;">
           <label for="search-default-bang-select" style="display: block; margin-bottom: 8px; font-weight: 500;">Default search engine:</label>
@@ -91,7 +80,10 @@ function createHardSearchPage(): void {
     const defaultBangSelect = app.querySelector<HTMLSelectElement>("#search-default-bang-select")!;
     const customUrlDisplay = app.querySelector<HTMLSpanElement>("#custom-url-display")!;
 
-    // Setup default bang selector
+    const countHeading = app.querySelector<HTMLHeadingElement>("#bang-count")!;
+
+    // Setup default bang selector (populated once the list loads, since
+    // options are verified against known tags).
     const popularBangs = [
         { t: "ddg", s: "DuckDuckGo" },
         { t: "g", s: "Google" },
@@ -109,23 +101,26 @@ function createHardSearchPage(): void {
     ];
 
     const currentSelectedBang = localStorage.getItem("default-bang") ?? "ddg";
-    const currentBangObj = bangs.find(b => b.t === currentSelectedBang);
 
-    let selectOptions = "";
-    popularBangs.forEach(bang => {
-        const bangDetails = bangs.find(b => b.t === bang.t);
-        if (bangDetails) {
-            const selected = bang.t === currentSelectedBang ? " selected" : "";
-            selectOptions += `<option value="${bang.t}"${selected}>${bang.s} (!${bang.t})</option>`;
+    function populateDefaultSelect(): void {
+        const known = new Set(bangs.map(b => b.t));
+        const currentBangObj = bangs.find(b => b.t === currentSelectedBang);
+
+        let selectOptions = "";
+        popularBangs.forEach(bang => {
+            if (known.has(bang.t)) {
+                const selected = bang.t === currentSelectedBang ? " selected" : "";
+                selectOptions += `<option value="${bang.t}"${selected}>${bang.s} (!${bang.t})</option>`;
+            }
+        });
+
+        // If current default is not in popular list, add it
+        if (currentBangObj && !popularBangs.find(pb => pb.t === currentSelectedBang)) {
+            selectOptions += `<option value="${currentSelectedBang}" selected>${currentBangObj.s} (!${currentSelectedBang})</option>`;
         }
-    });
 
-    // If current default is not in popular list, add it
-    if (currentBangObj && !popularBangs.find(pb => pb.t === currentSelectedBang)) {
-        selectOptions += `<option value="${currentSelectedBang}" selected>${currentBangObj.s} (!${currentSelectedBang})</option>`;
+        defaultBangSelect.innerHTML = selectOptions;
     }
-
-    defaultBangSelect.innerHTML = selectOptions;
 
     // Update custom URL display
     function updateCustomUrlDisplay(bangTag: string) {
@@ -336,9 +331,23 @@ function createHardSearchPage(): void {
         input.select(); // Select all text when input is focused
     });
 
-    // Initialize with the full list and ensure pagination is set up
-    allResults = bangs;
-    displayFullList(1);
+    // Initialize after the lazy list loads (IndexedDB + versioned JSON).
+    // Shows a loading state first so input works the moment data arrives.
+    resultsContainer.innerHTML = "Loading bang list…";
+    loadFullBangs().then(
+        (entries) => {
+            buildIndex(entries);
+            countHeading.textContent = `${entries.length} bangs and counting`;
+            populateDefaultSelect();
+            allResults = bangs;
+            displayFullList(1);
+        },
+        (err) => {
+            countHeading.textContent = "Bang list unavailable";
+            resultsContainer.innerHTML = "Could not load the bang list. Check your connection and reload.";
+            if (import.meta.env.DEV) console.error("[search] loadFullBangs failed", err);
+        },
+    );
 }
 
 // Initialize the search page after the DOM loads.

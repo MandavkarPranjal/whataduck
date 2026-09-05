@@ -1,12 +1,45 @@
-import { bangs } from "./bang";
+import { redirectMap } from "./generated/bangRedirect";
 import "./global.css";
+
+// Redirect hot path: synchronous hash lookup over the codegen'd
+// tag -> url-template map. No Fuse, no display metadata, no 2MB import.
+// Full bang list lives in data/bangs.min.json and is only ever loaded
+// by /search and /blocklist via src/lib/bangStore.ts.
+
+const FALLBACK_BANG = "ddg";
+
+function isKnownBang(tag: string): boolean {
+    return redirectMap[tag.toLowerCase()] !== undefined;
+}
+
+function originOf(template: string): string | null {
+    const m = template.match(/^https?:\/\/[^/]+/i);
+    return m ? m[0] : null;
+}
+
+// Display names for the landing-page picker. Hardcoded (12 entries) so we
+// never scan the redirect map for metadata it deliberately doesn't carry.
+const POPULAR_BANGS: { t: string; s: string }[] = [
+    { t: "gai", s: "Google" },
+    { t: "ddg", s: "DuckDuckGo" },
+    { t: "cgpt", s: "ChatGPT" },
+    { t: "x", s: "x(formerly twitter)" },
+    { t: "r", s: "reddit" },
+    { t: "grok", s: "Grok" },
+    { t: "yt", s: "YouTube" },
+    { t: "gh", s: "GitHub" },
+    { t: "y", s: "Yahoo" },
+    { t: "b", s: "Bing" },
+    { t: "w", s: "Wikipedia" },
+    { t: "a", s: "Amazon" },
+];
 
 function noSearchDefaultPageRender() {
     const app = document.querySelector<HTMLDivElement>("#app")!;
 
     // Get current default bang from localStorage
     const storedDefault = localStorage.getItem("default-bang");
-    const defaultBangFromStorage = bangs.some(b => b.t === storedDefault) ? (storedDefault as string) : "ddg";
+    const defaultBangFromStorage = storedDefault && isKnownBang(storedDefault) ? storedDefault : FALLBACK_BANG;
     const defaultUrl = `${window.location.origin}?d=${defaultBangFromStorage}&q=%s`;
 
     app.innerHTML = `
@@ -72,38 +105,21 @@ function noSearchDefaultPageRender() {
     const suggestionsInput = app.querySelector<HTMLInputElement>(".suggestions-input")!;
     const suggestionsSelect = app.querySelector<HTMLSelectElement>("#suggestions-select")!;
 
-    // Populate the default bang selector
-    const popularBangs = [
-        { t: "gai", s: "Google" },
-        { t: "ddg", s: "DuckDuckGo" },
-        { t: "cgpt", s: "ChatGPT" },
-        { t: "x", s: "x(formerly twitter)" },
-        { t: "r", s: "reddit" },
-        { t: "grok", s: "Grok" },
-        { t: "yt", s: "YouTube" },
-        { t: "gh", s: "GitHub" },
-        { t: "y", s: "Yahoo" },
-        { t: "b", s: "Bing" },
-        { t: "w", s: "Wikipedia" },
-        { t: "a", s: "Amazon" },
-    ];
-
-    // Add popular bangs first, then check if current default is in the list
-    const currentSelectedBang = localStorage.getItem("default-bang") ?? "ddg";
-    const currentBangObj = bangs.find(b => b.t === currentSelectedBang);
+    // Populate the default bang selector (popular list only — the redirect
+    // map carries no display names by design).
+    const currentSelectedBang = localStorage.getItem("default-bang") ?? FALLBACK_BANG;
 
     let selectOptions = "";
-    popularBangs.forEach(bang => {
-        const bangDetails = bangs.find(b => b.t === bang.t);
-        if (bangDetails) {
+    POPULAR_BANGS.forEach(bang => {
+        if (isKnownBang(bang.t)) {
             const selected = bang.t === currentSelectedBang ? " selected" : "";
             selectOptions += `<option value="${bang.t}"${selected}>${bang.s} (!${bang.t})</option>`;
         }
     });
 
-    // If current default is not in popular list, add it
-    if (currentBangObj && !popularBangs.find(pb => pb.t === currentSelectedBang)) {
-        selectOptions += `<option value="${currentSelectedBang}" selected>${currentBangObj.s} (!${currentSelectedBang})</option>`;
+    // If current default is not in popular list, add it (tag as label).
+    if (isKnownBang(currentSelectedBang) && !POPULAR_BANGS.find(pb => pb.t === currentSelectedBang)) {
+        selectOptions += `<option value="${currentSelectedBang}" selected>!${currentSelectedBang}</option>`;
     }
 
     defaultBangSelect.innerHTML = selectOptions;
@@ -176,6 +192,8 @@ function computeBlockSets() {
     return { root, search };
 }
 
+interface SelectedBang { tag: string; template: string; }
+
 function getBangredirectUrl(): RedirectResult { // returns redirect info or blocked reason
     const url = new URL(window.location.href);
     const query = url.searchParams.get("q")?.trim() ?? "";
@@ -187,25 +205,37 @@ function getBangredirectUrl(): RedirectResult { // returns redirect info or bloc
     }
 
     // Use URL parameter for default bang if provided, otherwise fall back to localStorage
-    let defaultBangTag = defaultBangParam || localStorage.getItem("default-bang") || "ddg";
+    const stored = localStorage.getItem("default-bang");
+    let defaultBangTag = FALLBACK_BANG;
+    if (defaultBangParam && isKnownBang(defaultBangParam)) {
+        defaultBangTag = defaultBangParam.toLowerCase();
+    } else if (stored && isKnownBang(stored)) {
+        defaultBangTag = stored.toLowerCase();
+    }
 
     // Store the default bang in localStorage if it came from URL parameter
     if (
         defaultBangParam &&
-        bangs.some(b => b.t === defaultBangParam) &&
-        defaultBangParam !== localStorage.getItem("default-bang")
+        isKnownBang(defaultBangParam) &&
+        defaultBangParam.toLowerCase() !== stored?.toLowerCase()
     ) {
-        localStorage.setItem("default-bang", defaultBangParam);
+        localStorage.setItem("default-bang", defaultBangParam.toLowerCase());
     }
 
-    const defaultBangObj = bangs.find((b) => b.t === defaultBangTag);
+    const defaultTemplate = redirectMap[defaultBangTag];
+    const defaultBang: SelectedBang | undefined = defaultTemplate
+        ? { tag: defaultBangTag, template: defaultTemplate }
+        : undefined;
 
     // match both !bang and bang!
     const prefixMatch = query.match(/!(\S+)/i);
     const suffixMatch = query.match(/(\S+)!/);
 
     const bangCandidate = (prefixMatch?.[1] ?? suffixMatch?.[1])?.toLowerCase();
-    const selectedBang = bangs.find((b) => b.t === bangCandidate) ?? defaultBangObj;
+    const candidateTemplate = bangCandidate ? redirectMap[bangCandidate] : undefined;
+    const selectedBang: SelectedBang | undefined = candidateTemplate && bangCandidate
+        ? { tag: bangCandidate, template: candidateTemplate }
+        : defaultBang;
 
     // Remove the bang from either position
     const cleanQuery = query
@@ -221,25 +251,25 @@ function getBangredirectUrl(): RedirectResult { // returns redirect info or bloc
     const override = url.searchParams.get('override') === '1';
 
     if (isSingleBangOnly && selectedBang) {
-        const tag = selectedBang.t.toLowerCase();
+        const tag = selectedBang.tag.toLowerCase();
         if (blockedRoot.has(tag) && !override) {
-            return { url: null, blocked: { tag: selectedBang.t, url: null, reason: 'Root redirect blocked', mode: 'root' } };
+            return { url: null, blocked: { tag: selectedBang.tag, url: null, reason: 'Root redirect blocked', mode: 'root' } };
         }
-        // No search terms -> root redirect allowed
-        return { url: selectedBang ? `https://${selectedBang.d}` : null };
+        // No search terms -> root redirect (origin derived from template)
+        return { url: originOf(selectedBang.template) };
     }
 
     // If we reach here we have search terms (or no bang found, fallback to default bang search)
-    const searchUrl = selectedBang?.u.replace(
+    const searchUrl = selectedBang?.template.replace(
         "{{{s}}}",
         encodeURIComponent(cleanQuery).replace(/%2F/g, "/")
     );
     if (!searchUrl) return { url: null };
 
     if (selectedBang) {
-        const tag = selectedBang.t.toLowerCase();
+        const tag = selectedBang.tag.toLowerCase();
         if (blockedSearch.has(tag) && !override) {
-            return { url: null, blocked: { tag: selectedBang.t, url: searchUrl, reason: 'Search redirect blocked', mode: 'search' } };
+            return { url: null, blocked: { tag: selectedBang.tag, url: searchUrl, reason: 'Search redirect blocked', mode: 'search' } };
         }
     }
 
@@ -253,16 +283,8 @@ function showBlockedScreen(block: { tag: string; url: string | null; reason: str
     // Determine override target: if block.url present use it; else derive engine root
     let overrideTarget: string | null = block.url;
     if (!overrideTarget) {
-        const engine = bangs.find(b => b.t.toLowerCase() === block.tag.toLowerCase());
-        if (engine) {
-            // Derive root: prefer domain field 'd' if present else parse from 'u'
-            if (engine.d) overrideTarget = `https://${engine.d}`; else if (engine.u) {
-                try {
-                    const m = engine.u.match(/https?:\/\/[^/]+/);
-                    if (m) overrideTarget = m[0];
-                } catch { /* noop */ }
-            }
-        }
+        const template = redirectMap[block.tag.toLowerCase()];
+        if (template) overrideTarget = originOf(template);
     }
 
     app.innerHTML = `
@@ -308,7 +330,12 @@ function showBlockedScreen(block: { tag: string; url: string | null; reason: str
 }
 
 function doRedirect() {
+    const t0 = performance.now();
     const result = getBangredirectUrl();
+    if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.log(`[whataduck] resolve ${(performance.now() - t0).toFixed(2)}ms`);
+    }
     if (result.blocked) { showBlockedScreen(result.blocked); return; }
     if (result.url) window.location.replace(result.url);
 }
