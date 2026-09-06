@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="color-scheme" content="dark" />
+<title>Bang pipeline benchmark — whataduck</title>
+<style>
+  body { background:#0d0d0d; color:#ddd; font-family:system-ui,sans-serif; margin:0; padding:24px; }
+  main { max-width:860px; margin:0 auto; }
+  h1 { font-size:22px; } h2 { font-size:17px; margin-top:32px; }
+  p, li { font-size:14px; line-height:1.55; color:#bbb; }
+  code { background:#1c1c1c; padding:1px 5px; border-radius:4px; font-size:13px; color:#9ecbff; }
+  table { border-collapse:collapse; width:100%; font-size:13.5px; margin-top:12px; }
+  th, td { border:1px solid #2a2a2a; padding:8px 10px; text-align:left; }
+  th { background:#191919; } td.num { text-align:right; font-variant-numeric:tabular-nums; }
+  td.win { color:#7ee787; font-weight:600; }
+  button { background:#1f6feb; color:#fff; border:none; border-radius:8px; padding:10px 22px;
+           font-size:15px; cursor:pointer; margin-top:12px; }
+  button:disabled { opacity:.5; cursor:wait; }
+  #status { font-size:13px; color:#888; margin-top:8px; min-height:20px; }
+  a { color:#58a6ff; }
+</style>
+</head>
+<body>
+<main>
+  <h1>⚡ Bang pipeline benchmark</h1>
+  <p>
+    Compares the <strong>old</strong> redirect path (pre-<code>e919d71</code>: full
+    <code>src/bang.ts</code> bundled into <code>main.ts</code>, lookups via
+    <code>bangs.some()</code> / <code>bangs.find()</code> — up to ~6 linear scans
+    over ~13.5k entries per redirect) against the <strong>new</strong> path
+    (codegen'd <code>redirectMap</code> hash lookup, <code>O(1)</code>; full list lives in
+    <code>data/bangs.min.json</code>, lazy-loaded only by <code>/search</code> and
+    <code>/blocklist</code>, cached in IndexedDB + Service Worker, re-downloaded only
+    when the data version changes).
+  </p>
+  <p>Numbers below marked <em>live</em> are measured right now in <strong>your</strong> browser
+     against the real <code>data/bangs.min.json</code>. Static sizes were measured at build time.</p>
+
+  <h2>📦 Payload (static, measured at build)</h2>
+  <table>
+    <tr><th>Artifact</th><th>Old</th><th>New</th><th>Δ</th></tr>
+    <tr><td>Redirect-path source</td>
+        <td class="num">2,705,955 B (<code>bang.ts</code>, 7 fields)</td>
+        <td class="num">934,822 B (<code>bangRedirect.ts</code>, tag→url only)</td>
+        <td class="num win">−65%</td></tr>
+    <tr><td>Redirect-path source (gzip)</td>
+        <td class="num">472,160 B</td><td class="num">242,463 B</td>
+        <td class="num win">−49%</td></tr>
+    <tr><td>Built redirect bundle</td>
+        <td class="num">n/a (full list bundled in)</td>
+        <td class="num">902,104 B (gzip 243,951 B)</td><td class="num">—</td></tr>
+    <tr><td>Full dataset on redirect path</td>
+        <td class="num">parsed + held in memory on every load</td>
+        <td class="num win">0 B — never fetched on <code>/</code></td>
+        <td class="num win">−100%</td></tr>
+    <tr><td>Full dataset (<code>/search</code>, <code>/blocklist</code>)</td>
+        <td class="num">bundled JS, re-downloaded every deploy</td>
+        <td class="num">1,671,789 B JSON (gzip 384,973 B), IndexedDB-cached, version-gated</td>
+        <td class="num win">download once per data version</td></tr>
+  </table>
+
+  <h2>🏎️ Redirect resolve (live, this browser)</h2>
+  <button id="run">Run benchmark</button>
+  <div id="status">Loading dataset…</div>
+  <table id="results" hidden>
+    <tr><th>Test</th><th>Old (linear scan)</th><th>New (hash lookup)</th><th>Speedup</th></tr>
+    <tr><td>Single bang lookup (mixed hits)</td>
+        <td class="num" id="old-single">…</td><td class="num" id="new-single">…</td>
+        <td class="num win" id="speed-single">…</td></tr>
+    <tr><td>Full redirect resolve (all lookups per redirect)</td>
+        <td class="num" id="old-full">…</td><td class="num" id="new-full">…</td>
+        <td class="num win" id="speed-full">…</td></tr>
+    <tr><td>Worst case: unknown bang (full miss)</td>
+        <td class="num" id="old-miss">…</td><td class="num" id="new-miss">…</td>
+        <td class="num win" id="speed-miss">…</td></tr>
+    <tr><td>Dataset parse / index build</td>
+        <td class="num" id="old-parse">…</td><td class="num" id="new-parse">…</td>
+        <td class="num" id="speed-parse">…</td></tr>
+  </table>
+  <p id="meta"></p>
+
+<script>
+(async () => {
+  const $ = id => document.getElementById(id);
+  const status = $('status'), btn = $('run');
+
+  // --- load the real dataset (same file /search uses) ---
+  let bangs, bytes;
+  try {
+    const t0 = performance.now();
+    const res = await fetch('data/bangs.min.json', { cache: 'force-cache' });
+    const buf = await res.arrayBuffer();
+    bytes = buf.byteLength;
+    const tNet = performance.now() - t0;
+    const t1 = performance.now();
+    bangs = JSON.parse(new TextDecoder().decode(buf));
+    const tParse = performance.now() - t1;
+    bangs._tNet = tNet; bangs._tParse = tParse;
+  } catch (e) {
+    status.textContent = 'Could not fetch data/bangs.min.json — serve the site (vite dev / dist) instead of file:// and reload.';
+    return;
+  }
+
+  const redirectMap = Object.create(null);
+  const tBuild0 = performance.now();
+  for (const b of bangs) redirectMap[b.t.toLowerCase()] = b.u;
+  const tBuildMap = performance.now() - tBuild0;
+
+  status.textContent = `Dataset ready: ${bangs.length.toLocaleString()} entries, ${bytes.toLocaleString()} B. Click Run.`;
+
+  const QUERIES = ['g','yt','gh','w','a','ddg','grok','cgpt','r','so','t3','ppx'];
+  const MISS = 'zzznotabang';
+
+  // Old path mirrors pre-e919d71 main.ts: several .some/.find scans per redirect
+  function oldResolve(q) {
+    const some1 = bangs.some(b => b.t === 'ddg');            // default-from-storage check
+    const cur = bangs.find(b => b.t === 'ddg');              // current default object
+    const det = bangs.find(b => b.t === q);                  // popular-list detail lookup
+    const some2 = bangs.some(b => b.t === q);                // default-param check
+    const def = bangs.find(b => b.t === 'ddg');              // defaultBangObj
+    const sel = bangs.find(b => b.t === q) ?? def;           // selectedBang
+    return (some1 && some2 && cur && det && sel) ? sel.u : null;
+  }
+  // New path mirrors current main.ts: hash lookups only
+  function newResolve(q) {
+    const dflt = redirectMap['ddg'];
+    const known = redirectMap['ddg'] !== undefined;
+    const cand = redirectMap[q];
+    const sel = (cand !== undefined ? cand : dflt);
+    return (known && sel) ? sel : null;
+  }
+
+  function bench(fn, iters) {
+    for (let i = 0; i < Math.min(iters, 200); i++) fn(i);     // warmup / JIT
+    const t0 = performance.now();
+    for (let i = 0; i < iters; i++) fn(i);
+    return (performance.now() - t0) / iters * 1e6;            // ns per op
+  }
+  const fmt = ns => ns < 1000 ? ns.toFixed(0) + ' ns/op'
+    : ns < 1e6 ? (ns/1e3).toFixed(2) + ' µs/op' : (ns/1e6).toFixed(2) + ' ms/op';
+
+  function runOnce() {
+    // single lookup: old = one .find, new = one hash get (mixed hit positions)
+    const oldSingle = bench(i => { const q = QUERIES[i % QUERIES.length]; bangs.find(b => b.t === q); }, 3000);
+    const newSingle = bench(i => { const q = QUERIES[i % QUERIES.length]; redirectMap[q]; }, 100000);
+    // full redirect resolve
+    const oldFull = bench(i => oldResolve(QUERIES[i % QUERIES.length]), 300);
+    const newFull = bench(i => newResolve(QUERIES[i % QUERIES.length]), 100000);
+    // worst-case miss
+    const oldMiss = bench(() => bangs.find(b => b.t === MISS), 300);
+    const newMiss = bench(() => redirectMap[MISS], 100000);
+    return { oldSingle, newSingle, oldFull, newFull, oldMiss, newMiss };
+  }
+
+  btn.onclick = () => {
+    btn.disabled = true;
+    $('results').hidden = true;
+    status.textContent = 'Running… (3 rounds, median taken)';
+    setTimeout(() => {
+      const rounds = [runOnce(), runOnce(), runOnce()];
+      const med = k => rounds.map(r => r[k]).sort((a,b) => a-b)[1];
+      const oS = med('oldSingle'), nS = med('newSingle');
+      const oF = med('oldFull'),   nF = med('newFull');
+      const oM = med('oldMiss'),   nM = med('newMiss');
+      $('old-single').textContent = fmt(oS); $('new-single').textContent = fmt(nS);
+      $('speed-single').textContent = (oS/nS).toFixed(1) + '×';
+      $('old-full').textContent = fmt(oF);   $('new-full').textContent = fmt(nF);
+      $('speed-full').textContent = (oF/nF).toFixed(1) + '×';
+      $('old-miss').textContent = fmt(oM);   $('new-miss').textContent = fmt(nM);
+      $('speed-miss').textContent = (oM/nM).toFixed(1) + '×';
+      $('old-parse').textContent = 'parse ' + bangs._tParse.toFixed(1) + ' ms on every redirect-page load';
+      $('new-parse').textContent = 'parse 0 ms on / (map build ' + tBuildMap.toFixed(1) + ' ms only on /search, /blocklist)';
+      $('speed-parse').textContent = '—';
+      $('results').hidden = false;
+      $('meta').innerHTML =
+        `Dataset fetch (cache): ${bangs._tNet.toFixed(1)} ms · ` +
+        `JSON parse: ${bangs._tParse.toFixed(1)} ms · ` +
+        `hash-map build: ${tBuildMap.toFixed(1)} ms · ${navigator.userAgent}`;
+      status.textContent = 'Done. Re-run anytime — numbers vary a little per run/machine.';
+      btn.disabled = false;
+    }, 30);
+  };
+  // auto-run once for convenience
+  btn.click();
+})();
+</script>
+</main>
+</body>
+</html>
