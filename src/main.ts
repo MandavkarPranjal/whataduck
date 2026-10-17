@@ -65,6 +65,19 @@ function noSearchDefaultPageRender() {
           <select id="default-bang-select" style="padding: 8px; margin-bottom: 12px; border-radius: 4px; border: 1px solid #ccc; min-width: 200px;">
           </select>
         </div>
+
+      <details style="margin-top: 12px; text-align: left;">
+        <summary style="cursor: pointer; font-weight: 500;">Contextual defaults (optional)</summary>
+        <div style="margin-top: 8px;">
+          <label for="work-default-bang-select" style="display: block; margin-bottom: 4px;">Work hours (Mon–Fri, 9–5):</label>
+          <select id="work-default-bang-select" style="padding: 8px; margin-bottom: 12px; border-radius: 4px; border: 1px solid #ccc; min-width: 200px;"></select>
+        </div>
+        <div>
+          <label for="weekend-default-bang-select" style="display: block; margin-bottom: 4px;">Weekends:</label>
+          <select id="weekend-default-bang-select" style="padding: 8px; margin-bottom: 12px; border-radius: 4px; border: 1px solid #ccc; min-width: 200px;"></select>
+        </div>
+        <p style="font-size: 12px; color: #666;">Pick “Auto (contextual)” above to use these. Stored locally only.</p>
+      </details>
       <div style="margin-top:12px;font-size:14px;"><a href="/blocklist" style="text-decoration:none;color:#555;">Manage blocked bangs</a></div>
 
         <div class="suggestions-container">
@@ -110,6 +123,8 @@ function noSearchDefaultPageRender() {
     const currentSelectedBang = localStorage.getItem("default-bang") ?? FALLBACK_BANG;
 
     let selectOptions = "";
+    // "auto" opts into contextual (time/day) defaults.
+    selectOptions += `<option value="auto"${currentSelectedBang === "auto" ? " selected" : ""}>Auto (contextual)</option>`;
     POPULAR_BANGS.forEach(bang => {
         if (isKnownBang(bang.t)) {
             const selected = bang.t === currentSelectedBang ? " selected" : "";
@@ -123,6 +138,36 @@ function noSearchDefaultPageRender() {
     }
 
     defaultBangSelect.innerHTML = selectOptions;
+
+    const workDefaultSelect = app.querySelector<HTMLSelectElement>("#work-default-bang-select")!;
+    const weekendDefaultSelect = app.querySelector<HTMLSelectElement>("#weekend-default-bang-select")!;
+
+    function populateContextSelect(el: HTMLSelectElement, key: string): void {
+        const current = localStorage.getItem(key) ?? "";
+        let opts = `<option value="">(inherit)</option>`;
+        POPULAR_BANGS.forEach(bang => {
+            if (isKnownBang(bang.t)) {
+                const selected = bang.t === current ? " selected" : "";
+                opts += `<option value="${bang.t}"${selected}>${bang.s} (!${bang.t})</option>`;
+            }
+        });
+        if (current && isKnownBang(current) && !POPULAR_BANGS.find(pb => pb.t === current)) {
+            opts += `<option value="${current}" selected>!${current}</option>`;
+        }
+        el.innerHTML = opts;
+    }
+
+    populateContextSelect(workDefaultSelect, "default-bang-work");
+    populateContextSelect(weekendDefaultSelect, "default-bang-weekend");
+
+    workDefaultSelect.addEventListener("change", () => {
+        if (workDefaultSelect.value) localStorage.setItem("default-bang-work", workDefaultSelect.value);
+        else localStorage.removeItem("default-bang-work");
+    });
+    weekendDefaultSelect.addEventListener("change", () => {
+        if (weekendDefaultSelect.value) localStorage.setItem("default-bang-weekend", weekendDefaultSelect.value);
+        else localStorage.removeItem("default-bang-weekend");
+    });
 
     // Update URL when selection changes
     defaultBangSelect.addEventListener("change", () => {
@@ -206,17 +251,48 @@ function getBangredirectUrl(): RedirectResult { // returns redirect info or bloc
 
     // Use URL parameter for default bang if provided, otherwise fall back to localStorage
     const stored = localStorage.getItem("default-bang");
+    const AUTO = "auto";
+    const isAuto = (v: string | null | undefined) => v?.toLowerCase() === AUTO;
+
+    // Resolve a contextual default based on time/day (fully client-side).
+    function contextualDefault(): string {
+        const now = new Date();
+        const weekend = now.getDay() === 0 || now.getDay() === 6;
+        const hour = now.getHours();
+        const workHours = !weekend && hour >= 9 && hour < 17;
+        const key = weekend
+            ? "default-bang-weekend"
+            : workHours
+              ? "default-bang-work"
+              : "default-bang";
+        const candidate = localStorage.getItem(key);
+        if (candidate && isKnownBang(candidate)) return candidate.toLowerCase();
+        // Fallback to a concrete stored default if it isn't "auto".
+        if (stored && isKnownBang(stored)) return stored.toLowerCase();
+        return FALLBACK_BANG;
+    }
+
     let defaultBangTag = FALLBACK_BANG;
+    if (isAuto(defaultBangParam) || isAuto(stored)) {
+        // "auto" opts into contextual selection.
+        if (defaultBangParam?.toLowerCase() === AUTO || stored?.toLowerCase() === AUTO) {
+            defaultBangTag = contextualDefault();
+        }
+    }
     if (defaultBangParam && isKnownBang(defaultBangParam)) {
         defaultBangTag = defaultBangParam.toLowerCase();
     } else if (stored && isKnownBang(stored)) {
         defaultBangTag = stored.toLowerCase();
     }
+    // If explicitly auto and nothing else resolved, use contextual.
+    if ((isAuto(defaultBangParam) || isAuto(stored)) && defaultBangTag === FALLBACK_BANG) {
+        defaultBangTag = contextualDefault();
+    }
 
     // Store the default bang in localStorage if it came from URL parameter
     if (
         defaultBangParam &&
-        isKnownBang(defaultBangParam) &&
+        (isKnownBang(defaultBangParam) || defaultBangParam.toLowerCase() === "auto") &&
         defaultBangParam.toLowerCase() !== stored?.toLowerCase()
     ) {
         localStorage.setItem("default-bang", defaultBangParam.toLowerCase());
