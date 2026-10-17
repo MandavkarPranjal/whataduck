@@ -39,7 +39,10 @@ function noSearchDefaultPageRender() {
 
     // Get current default bang from localStorage
     const storedDefault = localStorage.getItem("default-bang");
-    const defaultBangFromStorage = storedDefault && isKnownBang(storedDefault) ? storedDefault : FALLBACK_BANG;
+    const defaultBangFromStorage =
+        storedDefault && (isKnownBang(storedDefault) || storedDefault.toLowerCase() === "auto")
+            ? storedDefault
+            : FALLBACK_BANG;
     const defaultUrl = `${window.location.origin}?d=${defaultBangFromStorage}&q=%s`;
 
     app.innerHTML = `
@@ -172,6 +175,12 @@ function noSearchDefaultPageRender() {
     // Update URL when selection changes
     defaultBangSelect.addEventListener("change", () => {
         const selectedBang = defaultBangSelect.value;
+        if (selectedBang === "auto") {
+            const prev = localStorage.getItem("default-bang");
+            if (prev && isKnownBang(prev)) {
+                localStorage.setItem("default-bang-fallback", prev);
+            }
+        }
         localStorage.setItem("default-bang", selectedBang);
         urlInput.value = `${window.location.origin}?d=${selectedBang}&q=%s`;
     });
@@ -264,7 +273,7 @@ function getBangredirectUrl(): RedirectResult { // returns redirect info or bloc
             ? "default-bang-weekend"
             : workHours
               ? "default-bang-work"
-              : "default-bang";
+              : "default-bang-fallback";
         const candidate = localStorage.getItem(key);
         if (candidate && isKnownBang(candidate)) return candidate.toLowerCase();
         // Fallback to a concrete stored default if it isn't "auto".
@@ -273,20 +282,12 @@ function getBangredirectUrl(): RedirectResult { // returns redirect info or bloc
     }
 
     let defaultBangTag = FALLBACK_BANG;
-    if (isAuto(defaultBangParam) || isAuto(stored)) {
-        // "auto" opts into contextual selection.
-        if (defaultBangParam?.toLowerCase() === AUTO || stored?.toLowerCase() === AUTO) {
-            defaultBangTag = contextualDefault();
-        }
-    }
     if (defaultBangParam && isKnownBang(defaultBangParam)) {
         defaultBangTag = defaultBangParam.toLowerCase();
+    } else if (isAuto(defaultBangParam) || isAuto(stored)) {
+        defaultBangTag = contextualDefault();
     } else if (stored && isKnownBang(stored)) {
         defaultBangTag = stored.toLowerCase();
-    }
-    // If explicitly auto and nothing else resolved, use contextual.
-    if ((isAuto(defaultBangParam) || isAuto(stored)) && defaultBangTag === FALLBACK_BANG) {
-        defaultBangTag = contextualDefault();
     }
 
     // Store the default bang in localStorage if it came from URL parameter
